@@ -29,9 +29,13 @@ type Booking = {
   phone: string;
   email: string;
   vehicle_type: string;
+  registration_number: string | null;
   selected_service: string;
+  price_text: string | null;
   preferred_date: string;
   preferred_time: string;
+  dropoff_time: string | null;
+  pickup_time: string | null;
   message: string | null;
   status: BookingStatus;
   source: string;
@@ -64,6 +68,17 @@ const formatDateTime = (date: string) =>
   }).format(new Date(date));
 
 const csvEscape = (value: string | null | undefined) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+const isLegacyBookingShapeError = (error: { code?: string; message?: string }) => {
+  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  return (
+    text.includes("pgrst204") ||
+    text.includes("registration_number") ||
+    text.includes("price_text") ||
+    text.includes("dropoff_time") ||
+    text.includes("pickup_time")
+  );
+};
 
 export function AdminDashboard() {
   const [session, setSession] = useState<Session | null>(null);
@@ -105,10 +120,22 @@ export function AdminDashboard() {
     setLoadingBookings(true);
     setBookingError("");
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("bookings")
-      .select("id, created_at, name, phone, email, vehicle_type, selected_service, preferred_date, preferred_time, message, status, source")
+      .select(
+        "id, created_at, name, phone, email, vehicle_type, registration_number, selected_service, price_text, preferred_date, preferred_time, dropoff_time, pickup_time, message, status, source"
+      )
       .order("created_at", { ascending: false });
+
+    if (error && isLegacyBookingShapeError(error)) {
+      const fallback = await supabase
+        .from("bookings")
+        .select("id, created_at, name, phone, email, vehicle_type, selected_service, preferred_date, preferred_time, message, status, source")
+        .order("created_at", { ascending: false });
+
+      data = fallback.data as typeof data;
+      error = fallback.error;
+    }
 
     setLoadingBookings(false);
 
@@ -119,7 +146,15 @@ export function AdminDashboard() {
       return;
     }
 
-    setBookings((data ?? []) as Booking[]);
+    setBookings(
+      ((data ?? []) as Booking[]).map((booking) => ({
+        ...booking,
+        registration_number: booking.registration_number ?? null,
+        price_text: booking.price_text ?? null,
+        dropoff_time: booking.dropoff_time ?? booking.preferred_time,
+        pickup_time: booking.pickup_time ?? null
+      }))
+    );
   };
 
   useEffect(() => {
@@ -193,7 +228,9 @@ export function AdminDashboard() {
         booking.phone,
         booking.email,
         booking.vehicle_type,
+        booking.registration_number ?? "",
         booking.selected_service,
+        booking.price_text ?? "",
         booking.message ?? ""
       ]
         .join(" ")
@@ -222,7 +259,11 @@ export function AdminDashboard() {
     () =>
       bookings
         .filter((booking) => booking.preferred_date >= today && booking.status !== "cancelled")
-        .sort((a, b) => `${a.preferred_date}T${a.preferred_time}`.localeCompare(`${b.preferred_date}T${b.preferred_time}`))
+        .sort((a, b) =>
+          `${a.preferred_date}T${a.dropoff_time ?? a.preferred_time}`.localeCompare(
+            `${b.preferred_date}T${b.dropoff_time ?? b.preferred_time}`
+          )
+        )
         .slice(0, 5),
     [bookings, today]
   );
@@ -246,9 +287,12 @@ export function AdminDashboard() {
       "Telefon",
       "E-post",
       "Fordon",
+      "Reg.nr",
       "Tjänst",
+      "Pris",
       "Datum",
-      "Tid",
+      "Inlämning",
+      "Hämtning",
       "Meddelande"
     ];
     const rows = filteredBookings.map((booking) => [
@@ -258,9 +302,12 @@ export function AdminDashboard() {
       booking.phone,
       booking.email,
       booking.vehicle_type,
+      booking.registration_number ?? "",
       booking.selected_service,
+      booking.price_text ?? "",
       booking.preferred_date,
-      booking.preferred_time,
+      booking.dropoff_time ?? booking.preferred_time,
+      booking.pickup_time ?? "",
       booking.message ?? ""
     ]);
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
@@ -401,7 +448,7 @@ export function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[980px] text-left text-sm">
+                  <table className="w-full min-w-[1080px] text-left text-sm">
                     <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-white/[0.04] dark:text-zinc-400">
                       <tr>
                         <th className="px-5 py-4">Kund</th>
@@ -428,13 +475,24 @@ export function AdminDashboard() {
                           </td>
                           <td className="px-5 py-5">
                             <p className="font-bold">{booking.selected_service}</p>
+                            {booking.price_text ? <p className="mt-1 text-xs font-black text-vikingRed">{booking.price_text}</p> : null}
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Skapad {formatDateTime(booking.created_at)}</p>
                           </td>
                           <td className="px-5 py-5">
                             <p className="font-black">{formatDate(booking.preferred_date)}</p>
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{booking.preferred_time.slice(0, 5)}</p>
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                              Lämning {(booking.dropoff_time ?? booking.preferred_time).slice(0, 5)}
+                            </p>
+                            {booking.pickup_time ? (
+                              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Hämtning {booking.pickup_time.slice(0, 5)}</p>
+                            ) : null}
                           </td>
-                          <td className="px-5 py-5">{booking.vehicle_type}</td>
+                          <td className="px-5 py-5">
+                            <p>{booking.vehicle_type}</p>
+                            {booking.registration_number ? (
+                              <p className="mt-2 text-xs font-black uppercase text-zinc-500 dark:text-zinc-400">{booking.registration_number}</p>
+                            ) : null}
+                          </td>
                           <td className="px-5 py-5">
                             <select
                               className={`rounded-full border px-3 py-2 text-xs font-black outline-none ${statusClasses[booking.status]}`}
@@ -470,7 +528,7 @@ export function AdminDashboard() {
                         <div key={booking.id} className="rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.06]">
                           <p className="font-black">{booking.name}</p>
                           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                            {formatDate(booking.preferred_date)} kl. {booking.preferred_time.slice(0, 5)}
+                            {formatDate(booking.preferred_date)} kl. {(booking.dropoff_time ?? booking.preferred_time).slice(0, 5)}
                           </p>
                           <p className="mt-1 text-xs font-bold uppercase text-vikingRed">{booking.selected_service}</p>
                         </div>
