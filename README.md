@@ -32,6 +32,38 @@ Run the SQL in `supabase/migrations/20260515143000_create_bookings.sql` in the S
 
 The booking form inserts into `public.bookings` using the browser-safe publishable key. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
 
+## Admin Dashboard
+
+The protected dashboard is available at `/admin`.
+
+Run both migrations in Supabase SQL Editor:
+
+```text
+supabase/migrations/20260515143000_create_bookings.sql
+supabase/migrations/20260515154500_admin_booking_access.sql
+```
+
+Create an admin user in Supabase Auth, then allow that email to read/update booking status:
+
+```sql
+insert into public.booking_admins (email, note)
+values ('your-admin-email@example.com', 'Primary admin')
+on conflict (email) do nothing;
+```
+
+In Supabase Auth settings, add your live website URL and local URL to allowed redirect URLs, including `/admin`.
+
+The admin dashboard supports:
+
+- Magic-link login
+- Booking list with contact, vehicle, service, preferred date/time, message and status
+- Status updates for `new`, `confirmed`, `completed`, `cancelled`
+- Search and filters
+- Statistics cards
+- Upcoming bookings
+- Popular services
+- CSV export
+
 For deployment, add these environment variables in your hosting provider:
 
 ```bash

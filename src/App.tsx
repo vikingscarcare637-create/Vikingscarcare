@@ -8,6 +8,7 @@ import { Header } from "./components/Header";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { About } from "./pages/About";
+import { AdminDashboard } from "./pages/AdminDashboard";
 import { Blog } from "./pages/Blog";
 import { Contact } from "./pages/Contact";
 import { Gallery } from "./pages/Gallery";
@@ -26,21 +27,31 @@ export default function App() {
     <>
       <LoadingScreen visible={loading} />
       <ScrollToTop />
-      <Header />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/tjanster" element={<Services />} />
-          <Route path="/om-oss" element={<About />} />
-          <Route path="/galleri" element={<Gallery />} />
-          <Route path="/blogg" element={<Blog />} />
-          <Route path="/kontakta-oss" element={<Contact />} />
-        </Routes>
-      </main>
-      <Footer />
-      <FloatingActions />
-      <BookingModal />
-      <CookieConsent />
+      <Routes>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="*"
+          element={
+            <>
+              <Header />
+              <main>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/tjanster" element={<Services />} />
+                  <Route path="/om-oss" element={<About />} />
+                  <Route path="/galleri" element={<Gallery />} />
+                  <Route path="/blogg" element={<Blog />} />
+                  <Route path="/kontakta-oss" element={<Contact />} />
+                </Routes>
+              </main>
+              <Footer />
+              <FloatingActions />
+              <BookingModal />
+              <CookieConsent />
+            </>
+          }
+        />
+      </Routes>
     </>
   );
 }
