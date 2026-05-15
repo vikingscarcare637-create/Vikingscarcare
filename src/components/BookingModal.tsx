@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, CheckCircle2, Mail, MessageCircle, X } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, Mail, MessageCircle, X } from "lucide-react";
 import { company, services } from "../data/site";
 import { useApp } from "../context/useApp";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 type BookingFormState = {
   name: string;
@@ -30,14 +31,19 @@ export function BookingModal() {
   const { bookingOpen, closeBooking, selectedService } = useApp();
   const [form, setForm] = useState<BookingFormState>(initialState);
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (bookingOpen) {
       setForm((current) => ({ ...current, service: selectedService || current.service }));
+      setSent(false);
+      setErrorMessage("");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
+
     return () => {
       document.body.style.overflow = "";
     };
@@ -47,8 +53,7 @@ export function BookingModal() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const buildMailto = () => {
     const body = [
       "Ny bokningsförfrågan till Vikings Car Care",
       "",
@@ -63,12 +68,43 @@ export function BookingModal() {
       `Meddelande: ${form.message || "Inget meddelande"}`
     ].join("\n");
 
-    const mailto = `${company.emailHref}?subject=${encodeURIComponent(
-      `Bokning: ${form.service || "Bilvård"}`
-    )}&body=${encodeURIComponent(body)}`;
+    return `${company.emailHref}?subject=${encodeURIComponent(`Bokning: ${form.service || "Bilvård"}`)}&body=${encodeURIComponent(
+      body
+    )}`;
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setErrorMessage("");
+
+    if (!isSupabaseConfigured || !supabase) {
+      setSent(true);
+      setSubmitting(false);
+      window.location.href = buildMailto();
+      return;
+    }
+
+    const { error } = await supabase.from("bookings").insert({
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      vehicle_type: form.vehicle.trim(),
+      selected_service: form.service,
+      preferred_date: form.date,
+      preferred_time: form.time,
+      message: form.message.trim() || null
+    });
+
+    setSubmitting(false);
+
+    if (error) {
+      setErrorMessage("Bokningen kunde inte skickas just nu. Försök igen eller kontakta oss via telefon/WhatsApp.");
+      return;
+    }
 
     setSent(true);
-    window.location.href = mailto;
+    setForm(initialState);
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -122,9 +158,21 @@ export function BookingModal() {
                 {sent ? (
                   <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-200">
                     <div className="flex items-center gap-2 font-bold">
-                      <CheckCircle2 size={18} /> Tack! Bokningsförfrågan är förberedd.
+                      <CheckCircle2 size={18} /> Tack! Din bokningsförfrågan är skickad.
                     </div>
-                    <p className="mt-2">Din e-postapp öppnas med uppgifterna. Skicka mejlet för att slutföra förfrågan.</p>
+                    <p className="mt-2">Vi återkommer med bekräftelse så snart vi kan.</p>
+                  </div>
+                ) : null}
+
+                {errorMessage ? (
+                  <div className="rounded-2xl border border-vikingRed/30 bg-vikingRed/10 p-4 text-sm text-vikingRed dark:text-red-200">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertCircle size={18} /> Något gick fel
+                    </div>
+                    <p className="mt-2">{errorMessage}</p>
+                    <a className="mt-3 inline-flex font-bold underline" href={buildMailto()}>
+                      Skicka via e-post istället
+                    </a>
                   </div>
                 ) : null}
 
@@ -186,11 +234,15 @@ export function BookingModal() {
                   </label>
                 </div>
 
-                <button className="primary-button w-full justify-center py-4" type="submit">
-                  <CalendarDays size={19} /> Skicka bokningsförfrågan
+                <button
+                  className="primary-button w-full justify-center py-4 disabled:cursor-not-allowed disabled:opacity-70"
+                  type="submit"
+                  disabled={submitting}
+                >
+                  <CalendarDays size={19} /> {submitting ? "Skickar..." : "Skicka bokningsförfrågan"}
                 </button>
                 <p className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  <Mail size={14} /> Uppgifterna används endast för att hantera din bokning enligt GDPR.
+                  <Mail size={14} /> Uppgifterna sparas säkert och används endast för att hantera din bokning enligt GDPR.
                 </p>
               </form>
             </div>

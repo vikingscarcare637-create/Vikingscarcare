@@ -7,7 +7,7 @@ Production-ready React, TypeScript, TailwindCSS and Framer Motion website for Vi
 - Six main SEO-friendly pages: Hem, Tjänster, Om Oss, Galleri, Blogg, Kontakta Oss
 - Premium Scandinavian luxury design with dark and light mode
 - Swedish default language with English UI switcher option
-- Booking modal with date picker, time picker, service dropdown, WhatsApp and email handoff
+- Supabase-powered booking modal with date picker, time picker, service dropdown and WhatsApp fallback
 - Local business schema, Open Graph tags, canonical URLs, sitemap and robots.txt
 - Responsive navigation, sticky mobile booking CTA, floating WhatsApp and booking actions
 - Blog articles optimized for bilvård, biltvätt, helrekond, bilpolering and keramisk lackförsegling Karlskrona
@@ -19,6 +19,26 @@ npm install
 npm run dev
 ```
 
+Create `.env.local` from `.env.example`:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
+
+## Supabase Booking Backend
+
+Run the SQL in `supabase/migrations/20260515143000_create_bookings.sql` in the Supabase SQL Editor for the project.
+
+The booking form inserts into `public.bookings` using the browser-safe publishable key. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
+
+For deployment, add these environment variables in your hosting provider:
+
+```bash
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+```
+
 ## Production Build
 
 ```bash
@@ -27,6 +47,6 @@ npm run build
 
 ## Important Launch Notes
 
-- Replace `src/assets/logo.svg` with the official logo file if you have a separate brand asset.
 - Confirm final prices, opening hours and social media URLs before publishing.
-- The booking and contact forms currently use a `mailto:` handoff. Connect a backend, Formspree, Netlify Forms or a CRM endpoint for fully server-side email delivery.
+- Contact form still uses `mailto:`. Booking form now uses Supabase.
+- Add email notifications later with a Supabase Edge Function plus an email provider such as Resend.
