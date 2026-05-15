@@ -109,10 +109,10 @@ const friendlyBookingError = (error: BookingInsertError) => {
   const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
 
   if (text.includes("pgrst205") || text.includes("could not find") || text.includes("schema cache")) {
-    return "Bokningsdatabasen är inte aktiverad ännu. Skicka via e-post eller WhatsApp så länge, och kör SQL-migrationerna i Supabase.";
+    return "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.";
   }
 
-  return "Bokningen kunde inte skickas just nu. Försök igen eller kontakta oss via telefon/WhatsApp.";
+  return "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.";
 };
 
 export function BookingModal() {
