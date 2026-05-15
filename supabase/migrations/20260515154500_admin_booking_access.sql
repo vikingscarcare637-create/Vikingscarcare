@@ -23,6 +23,7 @@ as $$
 $$;
 
 revoke all on function private.is_booking_admin() from public;
+grant usage on schema private to authenticated;
 grant execute on function private.is_booking_admin() to authenticated;
 
 drop policy if exists "Admins can view booking requests" on public.bookings;

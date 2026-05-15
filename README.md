@@ -34,6 +34,7 @@ Run the SQL files in `supabase/migrations` in the Supabase SQL Editor for the pr
 supabase/migrations/20260515143000_create_bookings.sql
 supabase/migrations/20260515154500_admin_booking_access.sql
 supabase/migrations/20260515170000_extend_booking_details.sql
+supabase/migrations/20260515182000_fix_admin_dashboard_access.sql
 ```
 
 The booking form inserts into `public.bookings` using the browser-safe publishable key. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
@@ -50,6 +51,7 @@ Run all migrations in Supabase SQL Editor:
 supabase/migrations/20260515143000_create_bookings.sql
 supabase/migrations/20260515154500_admin_booking_access.sql
 supabase/migrations/20260515170000_extend_booking_details.sql
+supabase/migrations/20260515182000_fix_admin_dashboard_access.sql
 ```
 
 Create an admin user in Supabase Auth, then allow that email to read/update booking status:
@@ -59,6 +61,8 @@ insert into public.booking_admins (email, note)
 values ('your-admin-email@example.com', 'Primary admin')
 on conflict (email) do nothing;
 ```
+
+Use the exact email address you use when requesting the `/admin` magic link. If the dashboard still says it cannot read bookings, run `supabase/migrations/20260515182000_fix_admin_dashboard_access.sql` once more to refresh PostgREST permissions.
 
 In Supabase Auth settings, add your live website URL and local URL to allowed redirect URLs, including `/admin`.
 
