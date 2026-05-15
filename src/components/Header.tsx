@@ -19,7 +19,7 @@ export function Header() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-black/10 bg-white/78 backdrop-blur-2xl dark:border-white/10 dark:bg-carbon/78">
       <div className="container-xl flex h-20 items-center justify-between gap-4">
         <NavLink to="/" className="flex items-center gap-3" aria-label="Vikings Car Care hem">
-          <img src={company.logo} alt="Vikings Car Care logo" className="h-12 w-auto" />
+          <img src={company.logo} alt="Vikings Car Care logo" className="h-14 w-36 rounded-lg object-contain object-left" />
         </NavLink>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Huvudmeny">
@@ -54,7 +54,7 @@ export function Header() {
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 bg-carbon/95 p-4 text-white backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between">
-            <img src={company.logo} alt="Vikings Car Care logo" className="h-14 w-auto" />
+            <img src={company.logo} alt="Vikings Car Care logo" className="h-16 w-40 rounded-lg object-contain object-left" />
             <button className="icon-button border-white/10 bg-white/10 text-white" onClick={() => setMobileOpen(false)} aria-label="Stäng meny">
               <X />
             </button>

@@ -100,7 +100,7 @@ export function BookingModal() {
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=82')] bg-cover bg-center opacity-45" />
                 <div className="absolute inset-0 bg-gradient-to-br from-black via-black/70 to-vikingRed/25" />
                 <div className="relative flex h-full flex-col justify-between">
-                  <img src={company.logo} alt="Vikings Car Care" className="h-16 w-auto" />
+                  <img src={company.logo} alt="Vikings Car Care" className="h-20 w-44 rounded-xl object-contain object-left" />
                   <div>
                     <p className="eyebrow text-zinc-200">Snabb bokning</p>
                     <h2 className="mt-4 text-4xl font-black tracking-normal md:text-5xl">Boka premium bilvård</h2>

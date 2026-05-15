@@ -1,4 +1,4 @@
-import logoUrl from "../assets/logo.svg";
+import logoUrl from "../assets/vikings-logo.png";
 
 export const baseUrl = "https://vikingscarcare.com";
 

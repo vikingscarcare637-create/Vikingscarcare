@@ -11,7 +11,7 @@ export function Footer() {
       <div className="container-xl">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
           <div>
-            <img src={company.logo} alt="Vikings Car Care logo" className="h-16 w-auto" />
+            <img src={company.logo} alt="Vikings Car Care logo" className="h-20 w-44 rounded-xl object-contain object-left" />
             <p className="mt-5 max-w-sm leading-7 text-zinc-300">
               Premium bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona.
             </p>

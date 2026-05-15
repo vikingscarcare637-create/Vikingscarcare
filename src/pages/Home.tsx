@@ -45,7 +45,7 @@ export function Home() {
             <motion.img
               src={company.logo}
               alt="Vikings Car Care logo"
-              className="mb-7 h-20 w-auto"
+              className="mb-7 h-24 w-60 rounded-2xl object-contain object-left"
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}

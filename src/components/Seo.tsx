@@ -12,13 +12,14 @@ type SeoProps = {
 
 export function Seo({ title, description, path, image = company.logo, type = "website", schema }: SeoProps) {
   const canonical = `${baseUrl}${path}`;
+  const imageUrl = image.startsWith("http") ? image : `${baseUrl}${image}`;
   const localBusinessSchema = {
     "@context": "https://schema.org",
     "@type": "AutoWash",
     "@id": `${baseUrl}/#localbusiness`,
     name: company.name,
-    image,
-    logo: `${baseUrl}/favicon.svg`,
+    image: imageUrl,
+    logo: `${baseUrl}/logo.png`,
     url: baseUrl,
     telephone: "+46455616169",
     email: company.email,
@@ -64,12 +65,12 @@ export function Seo({ title, description, path, image = company.logo, type = "we
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonical} />
-      <meta property="og:image" content={image} />
+      <meta property="og:image" content={imageUrl} />
       <meta property="og:locale" content="sv_SE" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={image} />
+      <meta name="twitter:image" content={imageUrl} />
       <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
       {schema ? <script type="application/ld+json">{JSON.stringify(schema)}</script> : null}
     </Helmet>

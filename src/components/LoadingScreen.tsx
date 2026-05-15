@@ -15,7 +15,7 @@ export function LoadingScreen({ visible }: { visible: boolean }) {
             <motion.img
               src={company.logo}
               alt="Vikings Car Care logo"
-              className="mx-auto h-24 w-auto"
+              className="mx-auto h-28 w-56 rounded-2xl object-contain"
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.65, ease: "easeOut" }}
