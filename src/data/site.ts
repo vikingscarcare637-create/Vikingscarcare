@@ -75,7 +75,6 @@ export const navItems = [
   { href: "/tjanster", sv: "Tjänster", en: "Services" },
   { href: "/om-oss", sv: "Om Oss", en: "About" },
   { href: "/galleri", sv: "Galleri", en: "Gallery" },
-  { href: "/blogg", sv: "Blogg", en: "Blog" },
   { href: "/kontakta-oss", sv: "Kontakta Oss", en: "Contact" }
 ];
 
