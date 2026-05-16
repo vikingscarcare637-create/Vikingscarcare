@@ -6,7 +6,7 @@ export const pageCopy = {
       seoTitle: "Vikings Car Care | Bilvård Karlskrona, Helrekond & Keramisk Lackförsegling",
       seoDescription:
         "Professionell bilvård i Karlskrona. Premium rekond, biltvätt, bilpolering och keramisk lackförsegling med över 20 års erfarenhet och garanti.",
-      heroAlt: "Cinematisk premiumbil med våta reflektioner",
+      heroAlt: "Blå Vikings Car Care premiumbil vid vattnet i Karlskrona",
       eyebrow: "Premium Scandinavian Detailing",
       heroTitle: "Professionell Bilvård i Karlskrona",
       heroText: "Premium rekond, polering, keramisk lackförsegling och biltvätt med över 20 års erfarenhet.",
@@ -205,7 +205,7 @@ export const pageCopy = {
       seoTitle: "Vikings Car Care | Car Care Karlskrona, Full Detailing & Ceramic Coating",
       seoDescription:
         "Professional car care in Karlskrona. Premium detailing, car wash, polishing and ceramic paint protection with over 20 years of experience and guarantee.",
-      heroAlt: "Cinematic premium car with wet reflections",
+      heroAlt: "Blue Vikings Car Care premium car by the waterfront in Karlskrona",
       eyebrow: "Premium Scandinavian Detailing",
       heroTitle: "Professional Car Care in Karlskrona",
       heroText: "Premium detailing, polishing, ceramic paint protection and car wash with over 20 years of experience.",

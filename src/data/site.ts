@@ -1,4 +1,5 @@
 import logoUrl from "../assets/vikings-logo.png";
+import heroCarUrl from "../assets/vikings-hero-car.jpg";
 
 export const baseUrl = "https://vikingscarcare.com";
 
@@ -48,8 +49,7 @@ export const keywords = [
 ];
 
 export const images = {
-  hero:
-    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=2200&q=85",
+  hero: heroCarUrl,
   workshop:
     "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1600&q=82",
   coating:
