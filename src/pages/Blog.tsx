@@ -33,7 +33,7 @@ export function Blog() {
     <>
       <Seo
         title="Blogg | Bilvård Karlskrona, Lackskydd & Helrekond Tips"
-        description="SEO-guider från Vikings Car Care om keramisk lackförsegling, vintervård, biltvätt och professionell helrekond i Karlskrona."
+        description="Guider från Vikings Car Care om keramisk lackförsegling, vintervård, biltvätt och professionell helrekond i Karlskrona."
         path="/blogg"
         image={images.coating}
         schema={schema}
@@ -50,8 +50,8 @@ export function Blog() {
             Guider för bilvård, rekond och lackskydd i Karlskrona
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-200">
-            Läs praktiska, SEO-optimerade guider om biltvätt Karlskrona, helrekond Karlskrona, bilpolering Karlskrona
-            och keramisk lackförsegling Karlskrona.
+            Få praktiska råd om hur du skyddar lack, interiör och fälgar året runt, från saltiga vintervägar
+            till professionell rekond och keramisk lackförsegling.
           </p>
           <button className="primary-button mt-8 px-7 py-4" onClick={() => openBooking()}>
             Boka Tid <ArrowRight size={19} />
@@ -62,7 +62,7 @@ export function Blog() {
       <AnimatedSection className="section-padding">
         <div className="container-xl">
           <SectionHeading eyebrow="Artiklar" title="Kunskap som hjälper dig välja rätt bilvård" align="center">
-            Varje guide innehåller naturliga lokala sökord, internlänkar, FAQ och tydliga bokningsvägar.
+            Tydliga råd från vår verkstad, med fokus på hållbart skydd, rätt behandling och trygg bokning.
           </SectionHeading>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {blogArticles.map((article) => (
@@ -123,8 +123,8 @@ export function Blog() {
                       <h3 className="text-xl font-black text-ink dark:text-white">Vill du ha personlig rekommendation?</h3>
                       <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-300">
                         Läs mer om våra <Link className="font-bold text-vikingRed" to="/tjanster">tjänster</Link> eller
-                        kontakta oss för bokning av bilvård nära mig Karlskrona, rekond för bil Karlskrona och lackskydd
-                        Karlskrona.
+                        kontakta oss så hjälper vi dig välja rätt nivå av tvätt, rekond, polering eller lackskydd
+                        för din bil.
                       </p>
                       <button className="primary-button mt-5" onClick={() => openBooking()}>
                         Boka Tid <ArrowRight size={18} />
@@ -138,7 +138,7 @@ export function Blog() {
                     </section>
                   </div>
                   <aside className="h-fit rounded-2xl border border-black/10 bg-zinc-50 p-5 dark:border-white/10 dark:bg-white/[0.06]">
-                    <p className="text-sm font-black uppercase text-vikingRed">Interna länkar</p>
+                    <p className="text-sm font-black uppercase text-vikingRed">Utforska mer</p>
                     <div className="mt-4 grid gap-3 text-sm font-bold">
                       <Link className="hover:text-vikingRed" to="/tjanster">
                         Tjänster
