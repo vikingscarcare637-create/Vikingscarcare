@@ -13,6 +13,7 @@ import { Blog } from "./pages/Blog";
 import { Contact } from "./pages/Contact";
 import { Gallery } from "./pages/Gallery";
 import { Home } from "./pages/Home";
+import { ServiceCategory } from "./pages/ServiceCategory";
 import { Services } from "./pages/Services";
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/tjanster" element={<Services />} />
+                  <Route path="/tjanster/:categorySlug" element={<ServiceCategory />} />
                   <Route path="/om-oss" element={<About />} />
                   <Route path="/galleri" element={<Gallery />} />
                   <Route path="/blogg" element={<Blog />} />

@@ -13,6 +13,30 @@
     <priority>0.95</priority>
   </url>
   <url>
+    <loc>https://vikingscarcare.com/tjanster/tvatt</loc>
+    <lastmod>2026-05-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://vikingscarcare.com/tjanster/rekond</loc>
+    <lastmod>2026-05-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://vikingscarcare.com/tjanster/polering</loc>
+    <lastmod>2026-05-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://vikingscarcare.com/tjanster/skydd-behandlingar</loc>
+    <lastmod>2026-05-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://vikingscarcare.com/om-oss</loc>
     <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>

@@ -1,5 +1,5 @@
 import type { Language } from "../context/contextStore";
-import { blogArticles, faqs, galleryItems, services, testimonials, type BlogArticle, type Service } from "./site";
+import { blogArticles, faqs, galleryItems, images, services, testimonials, type BlogArticle, type Service } from "./site";
 
 export type LocalizedService = Service & {
   displayTitle: string;
@@ -13,7 +13,190 @@ export type LocalizedGalleryItem = (typeof galleryItems)[number] & {
   displayTitle: string;
 };
 
+type ServiceCategoryPageCopy = {
+  title: string;
+  shortTitle: string;
+  menuDescription: string;
+  eyebrow: string;
+  description: string;
+  introTitle: string;
+  introText: string;
+  seoTitle: string;
+  seoDescription: string;
+  ctaTitle: string;
+  ctaText: string;
+};
+
+export type ServiceCategoryPage = {
+  slug: string;
+  href: string;
+  categories: Service["category"][];
+  image: string;
+  sv: ServiceCategoryPageCopy;
+  en: ServiceCategoryPageCopy;
+};
+
+export type LocalizedServiceCategoryPage = Omit<ServiceCategoryPage, "sv" | "en"> &
+  ServiceCategoryPageCopy & {
+    serviceCount: number;
+  };
+
 const isEnglish = (language: Language) => language === "en";
+
+export const serviceCategoryPages: ServiceCategoryPage[] = [
+  {
+    slug: "tvatt",
+    href: "/tjanster/tvatt",
+    categories: ["Tvätt"],
+    image: images.wash,
+    sv: {
+      title: "Tvätt",
+      shortTitle: "Tvätt",
+      menuDescription: "Handtvätt, invändig tvätt och komplett in- och utvändig tvätt.",
+      eyebrow: "Tjänster / Tvätt",
+      description:
+        "Skonsam premiumtvätt för bilägare i Karlskrona som vill ha ren lack, fräsch kupé och en trygg grund för fortsatt bilvård.",
+      introTitle: "Biltvätt Karlskrona med kontrollerad metod",
+      introText:
+        "Vi använder säkra tvättsteg, premiumprodukter och mikrofiber för att minska risken för tvättrepor och ge bilen en ren, exklusiv känsla.",
+      seoTitle: "Biltvätt Karlskrona | Handtvätt & Invändig Tvätt | Vikings Car Care",
+      seoDescription:
+        "Boka premium biltvätt i Karlskrona hos Vikings Car Care. Handtvätt, invändig tvätt och in- och utvändig tvätt med garanti.",
+      ctaTitle: "Boka premium biltvätt i Karlskrona",
+      ctaText: "Välj tvättnivå så hjälper vi dig få bilen ren, trygg och redo för nästa steg."
+    },
+    en: {
+      title: "Wash",
+      shortTitle: "Wash",
+      menuDescription: "Hand wash, interior cleaning and complete inside-out wash.",
+      eyebrow: "Services / Wash",
+      description:
+        "Gentle premium washing for car owners in Karlskrona who want clean paint, a fresh cabin and a safe foundation for continued car care.",
+      introTitle: "Car wash in Karlskrona with controlled methods",
+      introText:
+        "We use safe wash steps, premium products and microfiber tools to reduce wash marks and give the car a clean, refined feeling.",
+      seoTitle: "Car Wash Karlskrona | Hand Wash & Interior Cleaning | Vikings Car Care",
+      seoDescription:
+        "Book a premium car wash in Karlskrona at Vikings Car Care. Hand wash, interior cleaning and complete inside-out wash with guarantee.",
+      ctaTitle: "Book premium car wash in Karlskrona",
+      ctaText: "Choose your wash level and we will help make the car clean, safe and ready for the next step."
+    }
+  },
+  {
+    slug: "rekond",
+    href: "/tjanster/rekond",
+    categories: ["Rekond"],
+    image: images.workshop,
+    sv: {
+      title: "Rekond",
+      shortTitle: "Rekond",
+      menuDescription: "Lilla rekond, stor rekond och textilrengöring för kupén.",
+      eyebrow: "Tjänster / Rekond",
+      description:
+        "Professionell bilrekond i Karlskrona för bilar som behöver kännas rena, välvårdade och premium igen.",
+      introTitle: "Helrekond Karlskrona för hela bilen",
+      introText:
+        "Rekond kombinerar rengöring, detaljarbete och finish för att lyfta både exteriör och interiör. Vi anpassar nivån efter bilens skick och dina mål.",
+      seoTitle: "Helrekond Karlskrona | Bilrekond & Rekond För Bil | Vikings Car Care",
+      seoDescription:
+        "Boka helrekond och bilrekond i Karlskrona. Lilla rekond, stor rekond och tyg kemtvätt med premiumprodukter och garanti.",
+      ctaTitle: "Boka rekond för bilen",
+      ctaText: "Få en tydlig rekommendation för lilla rekond, stor rekond eller interiörarbete."
+    },
+    en: {
+      title: "Detailing",
+      shortTitle: "Detailing",
+      menuDescription: "Light detail, full detail and deep textile cleaning for the cabin.",
+      eyebrow: "Services / Detailing",
+      description:
+        "Professional car detailing in Karlskrona for cars that need to feel clean, cared for and premium again.",
+      introTitle: "Full detailing in Karlskrona for the entire car",
+      introText:
+        "Detailing combines cleaning, precision work and finish to lift both exterior and interior. We tailor the level to the car's condition and your goals.",
+      seoTitle: "Full Detail Karlskrona | Car Detailing & Interior Cleaning | Vikings Car Care",
+      seoDescription:
+        "Book full detailing and car detailing in Karlskrona. Light detail, full detail and fabric deep cleaning with premium products and guarantee.",
+      ctaTitle: "Book car detailing",
+      ctaText: "Get a clear recommendation for light detail, full detail or interior work."
+    }
+  },
+  {
+    slug: "polering",
+    href: "/tjanster/polering",
+    categories: ["Polering"],
+    image: images.polish,
+    sv: {
+      title: "Polering",
+      shortTitle: "Polering",
+      menuDescription: "Steg 1 och steg 3 polering för djupare glans och lackkorrigering.",
+      eyebrow: "Tjänster / Polering",
+      description:
+        "Bilpolering i Karlskrona för bättre glans, färgdjup och en mer exklusiv lackfinish.",
+      introTitle: "Bilpolering Karlskrona med synligt resultat",
+      introText:
+        "Från glanshöjande steg 1 till avancerad steg 3 polering arbetar vi metodiskt för att minska defekter och skapa klarare reflektioner.",
+      seoTitle: "Bilpolering Karlskrona | Steg 1 & Steg 3 Polering | Vikings Car Care",
+      seoDescription:
+        "Professionell bilpolering i Karlskrona. Boka steg 1 polering eller steg 3 polering för glans, lackkorrigering och premiumfinish.",
+      ctaTitle: "Boka professionell bilpolering",
+      ctaText: "Vi hjälper dig välja rätt poleringsnivå efter lackens skick och önskat resultat."
+    },
+    en: {
+      title: "Polishing",
+      shortTitle: "Polishing",
+      menuDescription: "Stage 1 and stage 3 polishing for deeper gloss and paint correction.",
+      eyebrow: "Services / Polishing",
+      description:
+        "Car polishing in Karlskrona for better gloss, color depth and a more exclusive paint finish.",
+      introTitle: "Car polishing in Karlskrona with visible results",
+      introText:
+        "From gloss-enhancing stage 1 to advanced stage 3 polishing, we work methodically to reduce defects and create clearer reflections.",
+      seoTitle: "Car Polishing Karlskrona | Stage 1 & Stage 3 Polishing | Vikings Car Care",
+      seoDescription:
+        "Professional car polishing in Karlskrona. Book stage 1 polishing or stage 3 polishing for gloss, correction and premium finish.",
+      ctaTitle: "Book professional car polishing",
+      ctaText: "We help you choose the right polishing level for the paint condition and desired result."
+    }
+  },
+  {
+    slug: "skydd-behandlingar",
+    href: "/tjanster/skydd-behandlingar",
+    categories: ["Skydd", "Special"],
+    image: images.coating,
+    sv: {
+      title: "Skydd & behandlingar",
+      shortTitle: "Skydd",
+      menuDescription: "Keramisk lackförsegling, vax, glas, fälgar, plast och specialbehandlingar.",
+      eyebrow: "Tjänster / Skydd",
+      description:
+        "Lackskydd och specialbehandlingar i Karlskrona för bilar som ska stå emot salt, väder och vardagligt slitage.",
+      introTitle: "Keramisk lackförsegling Karlskrona och smarta behandlingar",
+      introText:
+        "Här samlas våra skyddande behandlingar och specialmoment: keramisk coating, vax, glas, fälgar, plast, flygrost, asfalt, lyktor och reparation av repor.",
+      seoTitle: "Keramisk Lackförsegling Karlskrona | Lackskydd & Behandlingar",
+      seoDescription:
+        "Boka keramisk lackförsegling, lackskydd och specialbehandlingar i Karlskrona hos Vikings Car Care. Garanti på alla tjänster.",
+      ctaTitle: "Boka lackskydd eller behandling",
+      ctaText: "Skydda bilen med rätt behandling för lack, glas, fälgar, plast och detaljer."
+    },
+    en: {
+      title: "Protection & treatments",
+      shortTitle: "Protection",
+      menuDescription: "Ceramic coating, wax, glass, wheels, trim and specialist treatments.",
+      eyebrow: "Services / Protection",
+      description:
+        "Paint protection and specialist treatments in Karlskrona for cars that need to resist salt, weather and everyday wear.",
+      introTitle: "Ceramic coating in Karlskrona and smart treatments",
+      introText:
+        "This category gathers our protective treatments and specialist work: ceramic coating, wax, glass, wheels, trim, fallout, tar, headlights and scratch repair.",
+      seoTitle: "Ceramic Coating Karlskrona | Paint Protection & Treatments",
+      seoDescription:
+        "Book ceramic coating, paint protection and specialist treatments in Karlskrona at Vikings Car Care. Guarantee on all services.",
+      ctaTitle: "Book paint protection or treatment",
+      ctaText: "Protect the car with the right treatment for paint, glass, wheels, trim and details."
+    }
+  }
+];
 
 const categoryTranslations: Record<string, string> = {
   Alla: "All",
@@ -225,6 +408,19 @@ export const categoryOptions = (language: Language) =>
     value,
     label: isEnglish(language) ? categoryTranslations[value] : value
   }));
+
+export const getServiceCategoryPages = (language: Language): LocalizedServiceCategoryPage[] =>
+  serviceCategoryPages.map((category) => ({
+    slug: category.slug,
+    href: category.href,
+    categories: category.categories,
+    image: category.image,
+    ...(isEnglish(language) ? category.en : category.sv),
+    serviceCount: services.filter((service) => category.categories.includes(service.category)).length
+  }));
+
+export const getServiceCategoryPageBySlug = (slug: string | undefined, language: Language) =>
+  getServiceCategoryPages(language).find((category) => category.slug === slug);
 
 export const localizeCategory = (category: string, language: Language) =>
   isEnglish(language) ? categoryTranslations[category] ?? category : category;

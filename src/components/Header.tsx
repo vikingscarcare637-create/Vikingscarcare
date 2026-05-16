@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { CalendarDays, ChevronDown, Menu, Moon, Phone, Sun, X } from "lucide-react";
 import { company, navItems, services } from "../data/site";
-import { localizeService } from "../data/localization";
+import { getServiceCategoryPages, localizeService } from "../data/localization";
 import type { Language } from "../context/contextStore";
 import { useApp } from "../context/useApp";
 
@@ -27,6 +27,9 @@ export function Header() {
     themeToggle: language === "sv" ? "Byt färgtema" : "Change color theme"
   };
   const localizedServices = services.map((service) => localizeService(service, language));
+  const serviceCategories = getServiceCategoryPages(language);
+  const getServicesForCategory = (categories: string[]) =>
+    localizedServices.filter((service) => categories.includes(service.category));
 
   useEffect(() => {
     const updateHeaderTone = () => {
@@ -95,19 +98,39 @@ export function Header() {
                   {language === "sv" ? item.sv : item.en}
                   <ChevronDown size={14} />
                 </NavLink>
-                <div className="pointer-events-none absolute left-0 top-full z-[60] mt-3 w-[380px] rounded-2xl border border-black/10 bg-white p-3 text-ink opacity-0 shadow-2xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:border-white/10 dark:bg-carbon dark:text-white">
-                  <div className="grid max-h-[460px] gap-1 overflow-y-auto pr-1">
-                    {services.map((service, index) => (
-                      <Link
-                        key={service.slug}
-                        to={`/tjanster#service-${service.slug}`}
-                        className="rounded-xl px-3 py-2.5 transition hover:bg-vikingRed/10 hover:text-vikingRed"
-                      >
-                        <span className="block text-sm font-black">{localizedServices[index].displayTitle}</span>
-                        <span className="mt-0.5 block text-xs font-bold text-zinc-500 dark:text-zinc-400">
-                          {localizedServices[index].displayPriceFrom}
-                        </span>
-                      </Link>
+                <div className="pointer-events-none absolute left-0 top-full z-[60] mt-3 w-[760px] rounded-2xl border border-black/10 bg-white p-3 text-ink opacity-0 shadow-2xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:border-white/10 dark:bg-carbon dark:text-white">
+                  <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+                    {serviceCategories.map((category) => (
+                      <div key={category.slug} className="rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.06]">
+                        <Link
+                          to={category.href}
+                          className="block rounded-xl border border-black/10 bg-white p-3 transition hover:border-vikingRed/40 hover:text-vikingRed dark:border-white/10 dark:bg-carbon/70"
+                        >
+                          <span className="flex items-center justify-between gap-3 text-sm font-black">
+                            {category.title}
+                            <span className="rounded-full bg-vikingRed px-2 py-1 text-[10px] uppercase text-white">
+                              {category.serviceCount}
+                            </span>
+                          </span>
+                          <span className="mt-1 block text-xs font-bold leading-5 text-zinc-500 dark:text-zinc-400">
+                            {category.menuDescription}
+                          </span>
+                        </Link>
+                        <div className="mt-2 grid gap-1">
+                          {getServicesForCategory(category.categories).map((service) => (
+                            <Link
+                              key={service.slug}
+                              to={`${category.href}#service-${service.slug}`}
+                              className="rounded-lg px-3 py-2 text-xs font-black transition hover:bg-vikingRed/10 hover:text-vikingRed"
+                            >
+                              <span className="block">{service.displayTitle}</span>
+                              <span className="mt-0.5 block font-bold text-zinc-500 dark:text-zinc-400">
+                                {service.displayPriceFrom}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -146,7 +169,7 @@ export function Header() {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#050505] p-4 text-white backdrop-blur-xl lg:hidden">
+        <div className="fixed inset-0 z-[100] min-h-dvh overflow-y-auto bg-[#050505] p-4 pb-28 text-white shadow-2xl backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between">
             <img src={company.logo} alt="Vikings Car Care logo" className="h-16 w-40 rounded-lg object-contain object-left" />
             <button className="icon-button border-white/10 bg-white/10 text-white" onClick={() => setMobileOpen(false)} aria-label={labels.close}>
@@ -156,7 +179,7 @@ export function Header() {
           <nav className="mt-8 grid gap-3" aria-label={labels.mobileMenu}>
             {navItems.map((item) =>
               item.href === "/tjanster" ? (
-                <div key={item.href} className="overflow-hidden rounded-2xl bg-white text-ink shadow-xl">
+                <div key={item.href} className="overflow-hidden rounded-2xl border border-white/10 bg-white text-ink shadow-xl">
                   <NavLink
                     to={item.href}
                     onClick={() => setMobileOpen(false)}
@@ -165,17 +188,37 @@ export function Header() {
                     {language === "sv" ? item.sv : item.en}
                     <ChevronDown size={18} />
                   </NavLink>
-                  <div className="grid max-h-[320px] gap-1 overflow-y-auto border-t border-black/10 bg-zinc-50 p-3">
-                    {services.map((service, index) => (
-                      <Link
-                        key={service.slug}
-                        to={`/tjanster#service-${service.slug}`}
-                        onClick={() => setMobileOpen(false)}
-                        className="rounded-xl bg-white px-3 py-3 text-sm font-black text-ink shadow-sm transition hover:text-vikingRed"
-                      >
-                        <span className="block">{localizedServices[index].displayTitle}</span>
-                        <span className="mt-1 block text-xs text-zinc-500">{localizedServices[index].displayPriceFrom}</span>
-                      </Link>
+                  <div className="grid max-h-[62vh] gap-3 overflow-y-auto border-t border-black/10 bg-zinc-50 p-3">
+                    {serviceCategories.map((category) => (
+                      <div key={category.slug} className="rounded-2xl border border-black/10 bg-white p-3 shadow-sm">
+                        <Link
+                          to={category.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-start justify-between gap-3 rounded-xl bg-zinc-50 px-3 py-3 text-ink transition hover:text-vikingRed"
+                        >
+                          <span>
+                            <span className="block text-sm font-black">{category.title}</span>
+                            <span className="mt-1 block text-xs font-bold leading-5 text-zinc-500">
+                              {category.menuDescription}
+                            </span>
+                          </span>
+                          <span className="rounded-full bg-vikingRed px-2 py-1 text-[10px] font-black text-white">
+                            {category.serviceCount}
+                          </span>
+                        </Link>
+                        <div className="mt-2 grid gap-1">
+                          {getServicesForCategory(category.categories).map((service) => (
+                            <Link
+                              key={service.slug}
+                              to={`${category.href}#service-${service.slug}`}
+                              onClick={() => setMobileOpen(false)}
+                              className="rounded-lg px-3 py-2 text-xs font-black text-zinc-700 transition hover:bg-vikingRed/10 hover:text-vikingRed"
+                            >
+                              {service.displayTitle}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
