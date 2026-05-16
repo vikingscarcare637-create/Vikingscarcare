@@ -1,7 +1,8 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { CalendarDays, ChevronDown, Menu, Moon, Phone, Sun, X } from "lucide-react";
-import { company, navItems } from "../data/site";
+import { company, navItems, services } from "../data/site";
+import { localizeService } from "../data/localization";
 import type { Language } from "../context/contextStore";
 import { useApp } from "../context/useApp";
 
@@ -25,6 +26,7 @@ export function Header() {
     home: language === "sv" ? "Vikings Car Care hem" : "Vikings Car Care home",
     themeToggle: language === "sv" ? "Byt färgtema" : "Change color theme"
   };
+  const localizedServices = services.map((service) => localizeService(service, language));
 
   useEffect(() => {
     const updateHeaderTone = () => {
@@ -48,7 +50,7 @@ export function Header() {
   }, [location.pathname]);
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-full px-3 py-2 text-sm font-bold transition ${
+    `inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-bold transition ${
       isActive
         ? "bg-vikingRed text-white"
         : isTransparent
@@ -86,11 +88,36 @@ export function Header() {
         </NavLink>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label={labels.mainMenu}>
-          {navItems.map((item) => (
-            <NavLink key={item.href} to={item.href} className={navClass}>
-              {language === "sv" ? item.sv : item.en}
-            </NavLink>
-          ))}
+          {navItems.map((item) =>
+            item.href === "/tjanster" ? (
+              <div key={item.href} className="group relative">
+                <NavLink to={item.href} className={navClass}>
+                  {language === "sv" ? item.sv : item.en}
+                  <ChevronDown size={14} />
+                </NavLink>
+                <div className="pointer-events-none absolute left-0 top-full z-[60] mt-3 w-[380px] rounded-2xl border border-black/10 bg-white p-3 text-ink opacity-0 shadow-2xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 dark:border-white/10 dark:bg-carbon dark:text-white">
+                  <div className="grid max-h-[460px] gap-1 overflow-y-auto pr-1">
+                    {services.map((service, index) => (
+                      <Link
+                        key={service.slug}
+                        to={`/tjanster#service-${service.slug}`}
+                        className="rounded-xl px-3 py-2.5 transition hover:bg-vikingRed/10 hover:text-vikingRed"
+                      >
+                        <span className="block text-sm font-black">{localizedServices[index].displayTitle}</span>
+                        <span className="mt-0.5 block text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                          {localizedServices[index].displayPriceFrom}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <NavLink key={item.href} to={item.href} className={navClass}>
+                {language === "sv" ? item.sv : item.en}
+              </NavLink>
+            )
+          )}
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
@@ -119,24 +146,50 @@ export function Header() {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 bg-carbon/95 p-4 text-white backdrop-blur-xl lg:hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#050505] p-4 text-white backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between">
             <img src={company.logo} alt="Vikings Car Care logo" className="h-16 w-40 rounded-lg object-contain object-left" />
             <button className="icon-button border-white/10 bg-white/10 text-white" onClick={() => setMobileOpen(false)} aria-label={labels.close}>
               <X />
             </button>
           </div>
-          <nav className="mt-10 grid gap-3" aria-label={labels.mobileMenu}>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                onClick={() => setMobileOpen(false)}
-                className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 text-lg font-black"
-              >
-                {language === "sv" ? item.sv : item.en}
-              </NavLink>
-            ))}
+          <nav className="mt-8 grid gap-3" aria-label={labels.mobileMenu}>
+            {navItems.map((item) =>
+              item.href === "/tjanster" ? (
+                <div key={item.href} className="overflow-hidden rounded-2xl bg-white text-ink shadow-xl">
+                  <NavLink
+                    to={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between px-5 py-4 text-lg font-black"
+                  >
+                    {language === "sv" ? item.sv : item.en}
+                    <ChevronDown size={18} />
+                  </NavLink>
+                  <div className="grid max-h-[320px] gap-1 overflow-y-auto border-t border-black/10 bg-zinc-50 p-3">
+                    {services.map((service, index) => (
+                      <Link
+                        key={service.slug}
+                        to={`/tjanster#service-${service.slug}`}
+                        onClick={() => setMobileOpen(false)}
+                        className="rounded-xl bg-white px-3 py-3 text-sm font-black text-ink shadow-sm transition hover:text-vikingRed"
+                      >
+                        <span className="block">{localizedServices[index].displayTitle}</span>
+                        <span className="mt-1 block text-xs text-zinc-500">{localizedServices[index].displayPriceFrom}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-2xl bg-white px-5 py-4 text-lg font-black text-ink shadow-xl transition hover:text-vikingRed"
+                >
+                  {language === "sv" ? item.sv : item.en}
+                </NavLink>
+              )
+            )}
           </nav>
           <div className="mt-8 grid gap-3">
             <button

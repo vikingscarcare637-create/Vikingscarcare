@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { ArrowRight, Filter, ShieldCheck } from "lucide-react";
 import { AnimatedSection } from "../components/AnimatedSection";
 import { CTA } from "../components/CTA";
@@ -12,6 +13,7 @@ import { pageCopy } from "../data/pageCopy";
 
 export function Services() {
   const [category, setCategory] = useState("Alla");
+  const location = useLocation();
   const { language, openBooking } = useApp();
   const copy = pageCopy[language].services;
   const ui = uiText[language];
@@ -21,6 +23,15 @@ export function Services() {
     () => (category === "Alla" ? services : services.filter((service) => service.category === category)),
     [category]
   );
+
+  useEffect(() => {
+    if (!location.hash.startsWith("#service-")) return;
+
+    setCategory("Alla");
+    window.setTimeout(() => {
+      document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, [location.hash]);
 
   return (
     <>

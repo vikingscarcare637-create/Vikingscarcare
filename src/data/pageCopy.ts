@@ -169,10 +169,10 @@ export const pageCopy = {
     contact: {
       seoTitle: "Kontakta Oss | Vikings Car Care Karlskrona",
       seoDescription:
-        "Kontakta Vikings Car Care för bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona. Ring, maila, WhatsApp eller boka online.",
+        "Kontakta Vikings Car Care för bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona. Ring, maila eller boka online.",
       eyebrow: "Kontakta Oss",
       title: "Boka premium bilvård i Karlskrona",
-      text: "Ring, maila, skicka WhatsApp eller fyll i formuläret. Vi hjälper dig snabbt hitta rätt tjänst för bilen.",
+      text: "Ring, maila eller boka online. Vi hjälper dig snabbt hitta rätt tjänst för bilen.",
       contactEyebrow: "Direktkontakt",
       contactTitle: "Vi finns på Borgmästarekajen 32",
       contactText:
@@ -368,10 +368,10 @@ export const pageCopy = {
     contact: {
       seoTitle: "Contact Us | Vikings Car Care Karlskrona",
       seoDescription:
-        "Contact Vikings Car Care for car care, car wash, full detailing, polishing and ceramic paint protection in Karlskrona. Call, email, WhatsApp or book online.",
+        "Contact Vikings Car Care for car care, car wash, full detailing, polishing and ceramic paint protection in Karlskrona. Call, email or book online.",
       eyebrow: "Contact Us",
       title: "Book premium car care in Karlskrona",
-      text: "Call, email, send WhatsApp or fill in the form. We will help you quickly find the right service for your car.",
+      text: "Call, email or book online. We will help you quickly find the right service for your car.",
       contactEyebrow: "Direct contact",
       contactTitle: "Find us at Borgmästarekajen 32",
       contactText: "Contact us for professional car care, premium car wash, polishing and ceramic paint protection in Karlskrona.",

@@ -11,7 +11,8 @@ export function ServiceCard({ service }: { service: Service }) {
 
   return (
     <motion.article
-      className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-silver transition duration-300 hover:-translate-y-1 hover:border-vikingRed/40 dark:border-white/10 dark:bg-white/[0.045]"
+      id={`service-${service.slug}`}
+      className="group scroll-mt-28 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-silver transition duration-300 hover:-translate-y-1 hover:border-vikingRed/40 dark:border-white/10 dark:bg-white/[0.045]"
       whileHover={{ y: -5 }}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
