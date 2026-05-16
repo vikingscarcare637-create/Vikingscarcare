@@ -9,27 +9,34 @@ import { SectionHeading } from "../components/SectionHeading";
 import { Seo } from "../components/Seo";
 import { ServiceCard } from "../components/ServiceCard";
 import { useApp } from "../context/useApp";
-import { blogArticles, company, faqs, images, services, testimonials } from "../data/site";
+import { company, images, services } from "../data/site";
+import { getLocalizedBlogArticles, getLocalizedFaqs, getLocalizedTestimonials, uiText } from "../data/localization";
+import { pageCopy } from "../data/pageCopy";
 
 const popularServices = services.filter((service) =>
   ["Stor rekond", "Keramisk lackförsegling", "Steg 3 polering", "In- och utvändig tvätt"].includes(service.title)
 );
 
 export function Home() {
-  const { openBooking } = useApp();
+  const { language, openBooking } = useApp();
+  const copy = pageCopy[language].home;
+  const ui = uiText[language];
+  const blogArticles = getLocalizedBlogArticles(language);
+  const faqs = getLocalizedFaqs(language);
+  const testimonials = getLocalizedTestimonials(language);
 
   return (
     <>
       <Seo
-        title="Vikings Car Care | Bilvård Karlskrona, Helrekond & Keramisk Lackförsegling"
-        description="Professionell bilvård i Karlskrona. Premium rekond, biltvätt, bilpolering och keramisk lackförsegling med över 20 års erfarenhet och garanti."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/"
         image={images.hero}
       />
 
       <section className="relative min-h-screen overflow-hidden bg-carbon pt-24 text-white">
         <div className="absolute inset-0">
-          <img src={images.hero} alt="Cinematisk premiumbil med våta reflektioner" className="h-full w-full object-cover" />
+          <img src={images.hero} alt={copy.heroAlt} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/72 to-black/20" />
           <div className="absolute inset-0 bg-gradient-to-t from-carbon via-transparent to-black/40" />
         </div>
@@ -56,7 +63,7 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.08 }}
             >
-              Premium Scandinavian Detailing
+              {copy.eyebrow}
             </motion.p>
             <motion.h1
               className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] tracking-normal md:text-7xl lg:text-8xl"
@@ -64,7 +71,7 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.15 }}
             >
-              Professionell Bilvård i Karlskrona
+              {copy.heroTitle}
             </motion.h1>
             <motion.p
               className="mt-7 max-w-2xl text-lg leading-8 text-zinc-200 md:text-xl"
@@ -72,7 +79,7 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.24 }}
             >
-              Premium rekond, polering, keramisk lackförsegling och biltvätt med över 20 års erfarenhet.
+              {copy.heroText}
             </motion.p>
             <motion.div
               className="mt-9 flex flex-col gap-4 sm:flex-row"
@@ -81,10 +88,10 @@ export function Home() {
               transition={{ duration: 0.75, delay: 0.32 }}
             >
               <button className="primary-button justify-center px-7 py-4" onClick={() => openBooking()}>
-                Boka Tid <ArrowRight size={20} />
+                {ui.book} <ArrowRight size={20} />
               </button>
               <a className="secondary-button justify-center border-white/20 bg-white/10 px-7 py-4 text-white" href={company.phoneHref}>
-                <Phone size={20} /> Ring Nu
+                <Phone size={20} /> {ui.callNow}
               </a>
             </motion.div>
 
@@ -94,11 +101,7 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.42 }}
             >
-              {[
-                ["20+", "års erfarenhet"],
-                ["100%", "garanti på tjänster"],
-                ["Karlskrona", "lokal premiumservice"]
-              ].map(([value, label]) => (
+              {copy.stats.map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                   <p className="text-3xl font-black">{value}</p>
                   <p className="mt-1 text-sm text-zinc-300">{label}</p>
@@ -112,24 +115,23 @@ export function Home() {
       <AnimatedSection className="section-padding">
         <div className="container-xl">
           <SectionHeading
-            eyebrow="Varför välja oss"
-            title="Lyxig bilvård med metod, precision och trygg garanti"
+            eyebrow={copy.whyEyebrow}
+            title={copy.whyTitle}
             align="center"
           >
-            Vikings Car Care kombinerar skandinavisk noggrannhet, premiumprodukter och modern detailing för dig som vill
-            ge bilen ett resultat som känns exklusivt på riktigt.
+            {copy.whyText}
           </SectionHeading>
           <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {[
-              { icon: ShieldCheck, title: "Garanti på allt", text: company.guarantee },
-              { icon: Sparkles, title: "Premiumprodukter", text: "Utvalda produkter för lack, interiör, glas, fälgar och skydd." },
-              { icon: BadgeCheck, title: "20+ års erfarenhet", text: "Lång erfarenhet av rekond, polering och lackskydd." },
-              { icon: Car, title: "Modern verkstad", text: "Cinematic detailing-känsla med fokus på varje detalj." }
-            ].map((item) => (
-              <div key={item.title} className="glass-panel rounded-2xl p-6">
-                <item.icon className="text-vikingRed" size={30} />
-                <h3 className="mt-5 text-xl font-black text-ink dark:text-white">{item.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{item.text}</p>
+              ShieldCheck,
+              Sparkles,
+              BadgeCheck,
+              Car
+            ].map((Icon, index) => (
+              <div key={copy.whyCards[index][0]} className="glass-panel rounded-2xl p-6">
+                <Icon className="text-vikingRed" size={30} />
+                <h3 className="mt-5 text-xl font-black text-ink dark:text-white">{copy.whyCards[index][0]}</h3>
+                <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{copy.whyCards[index][1]}</p>
               </div>
             ))}
           </div>
@@ -139,11 +141,11 @@ export function Home() {
       <AnimatedSection className="section-padding bg-white/65 dark:bg-white/[0.025]">
         <div className="container-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading eyebrow="Populära tjänster" title="Tjänster som lyfter bilens värde och känsla">
-              Välj mellan handtvätt, helrekond, polering, vaxbehandling och keramisk lackförsegling i Karlskrona.
+            <SectionHeading eyebrow={copy.servicesEyebrow} title={copy.servicesTitle}>
+              {copy.servicesText}
             </SectionHeading>
             <Link className="secondary-button self-start" to="/tjanster">
-              Alla tjänster <ArrowRight size={18} />
+              {ui.allServices} <ArrowRight size={18} />
             </Link>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -157,12 +159,11 @@ export function Home() {
       <AnimatedSection className="section-padding">
         <div className="container-xl grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div>
-            <SectionHeading eyebrow="Före & efter" title="Från matt vardagsbil till spegelblank premiumfinish">
-              Se känslan av professionell bilrekond Karlskrona: djupare färg, renare ytor, bättre reflektioner och en bil
-              som känns nyare varje gång du öppnar dörren.
+            <SectionHeading eyebrow={copy.beforeEyebrow} title={copy.beforeTitle}>
+              {copy.beforeText}
             </SectionHeading>
             <button className="primary-button mt-8" onClick={() => openBooking("Stor rekond")}>
-              Boka helrekond <ArrowRight size={18} />
+              {ui.bookDetail} <ArrowRight size={18} />
             </button>
           </div>
           <BeforeAfter />
@@ -179,18 +180,17 @@ export function Home() {
             </p>
           </div>
           <div>
-            <p className="eyebrow text-zinc-300">Keramisk lackförsegling</p>
-            <h2 className="mt-4 text-4xl font-black md:text-6xl">Långvarigt skydd för lacken i kustklimat</h2>
+            <p className="eyebrow text-zinc-300">{copy.coatingEyebrow}</p>
+            <h2 className="mt-4 text-4xl font-black md:text-6xl">{copy.coatingTitle}</h2>
             <p className="mt-6 leading-8 text-zinc-300">
-              Keramisk lackförsegling skyddar mot salt, UV, smuts och väder samtidigt som bilen får en djup, exklusiv glans.
-              Perfekt för dig som vill ha premium lackskydd Karlskrona och enklare underhåll över tid.
+              {copy.coatingText}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button className="primary-button justify-center" onClick={() => openBooking("Keramisk lackförsegling")}>
-                Boka coating
+                {ui.bookCoating}
               </button>
               <Link className="secondary-button justify-center border-white/20 bg-white/10 text-white" to="/blogg">
-                Läs guiden
+                {ui.readGuide}
               </Link>
             </div>
           </div>
@@ -199,8 +199,8 @@ export function Home() {
 
       <AnimatedSection className="section-padding">
         <div className="container-xl">
-          <SectionHeading eyebrow="Kundomdömen" title="Förtroende byggt på resultat" align="center">
-            Google Reviews-känsla med tydligt fokus på service, kvalitet och trygg leverans.
+          <SectionHeading eyebrow={copy.reviewsEyebrow} title={copy.reviewsTitle} align="center">
+            {copy.reviewsText}
           </SectionHeading>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {testimonials.map((review) => (
@@ -210,7 +210,7 @@ export function Home() {
                     <Star key={index} size={18} fill="currentColor" />
                   ))}
                 </div>
-                <p className="mt-5 leading-7 text-zinc-700 dark:text-zinc-200">“{review.text}”</p>
+                <p className="mt-5 leading-7 text-zinc-700 dark:text-zinc-200">"{review.text}"</p>
                 <p className="mt-5 font-black text-ink dark:text-white">{review.name}</p>
               </div>
             ))}
@@ -220,21 +220,17 @@ export function Home() {
 
       <AnimatedSection className="section-padding bg-white/65 dark:bg-white/[0.025]">
         <div className="container-xl">
-          <SectionHeading eyebrow="Prisindikation" title="Premium bilvård med tydliga startpriser">
-            Priset beror på bilens storlek, skick och önskad finish. Vi ger alltid tydlig rekommendation innan arbetet startar.
+          <SectionHeading eyebrow={copy.pricingEyebrow} title={copy.pricingTitle}>
+            {copy.pricingText}
           </SectionHeading>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {[
-              ["Biltvätt Karlskrona", "Fr. 349 kr", "Skonsam handtvätt och ren finish."],
-              ["Helrekond Karlskrona", "Fr. 2 995 kr", "Komplett rekond för in- och utsida."],
-              ["Keramisk coating", "Fr. 5 995 kr", "Långvarigt skydd och djup glans."]
-            ].map(([title, price, text]) => (
+            {copy.pricingCards.map(([title, price, text]) => (
               <div key={title} className="rounded-2xl border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-white/[0.045]">
                 <h3 className="text-xl font-black text-ink dark:text-white">{title}</h3>
                 <p className="mt-4 text-3xl font-black text-vikingRed">{price}</p>
                 <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{text}</p>
                 <button className="secondary-button mt-5 w-full justify-center" onClick={() => openBooking(title)}>
-                  Boka Tid
+                  {ui.book}
                 </button>
               </div>
             ))}
@@ -244,8 +240,8 @@ export function Home() {
 
       <AnimatedSection className="section-padding">
         <div className="container-xl grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <SectionHeading eyebrow="FAQ" title="Vanliga frågor om bilvård i Karlskrona">
-            Svar på det viktigaste inför din bokning hos Vikings Car Care.
+          <SectionHeading eyebrow={copy.faqEyebrow} title={copy.faqTitle}>
+            {copy.faqText}
           </SectionHeading>
           <FaqAccordion items={faqs} />
         </div>
@@ -254,9 +250,9 @@ export function Home() {
       <AnimatedSection className="section-padding bg-white/65 dark:bg-white/[0.025]">
         <div className="container-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading eyebrow="Bilvårdsblogg" title="Guider för lackskydd, rekond och vintervård" />
+            <SectionHeading eyebrow={copy.blogEyebrow} title={copy.blogTitle} />
             <Link className="secondary-button self-start" to="/blogg">
-              Alla artiklar <ArrowRight size={18} />
+              {ui.allArticles} <ArrowRight size={18} />
             </Link>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -290,9 +286,8 @@ export function Home() {
             />
           </div>
           <div>
-            <SectionHeading eyebrow="Hitta oss" title="Bilvård nära dig i Karlskrona">
-              Besök Vikings Car Care på Borgmästarekajen 32. Ring, boka online eller skicka ett WhatsApp-meddelande så
-              hjälper vi dig välja rätt tjänst.
+            <SectionHeading eyebrow={copy.mapEyebrow} title={copy.mapTitle}>
+              {copy.mapText}
             </SectionHeading>
             <div className="mt-6 grid gap-3 text-zinc-700 dark:text-zinc-200">
               <p className="flex gap-3">
@@ -303,7 +298,7 @@ export function Home() {
               </a>
             </div>
             <button className="primary-button mt-8" onClick={() => openBooking()}>
-              Boka Tid
+              {ui.book}
             </button>
           </div>
         </div>

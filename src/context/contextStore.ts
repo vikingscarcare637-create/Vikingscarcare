@@ -10,6 +10,7 @@ export type AppContextValue = {
   selectedService: string;
   toggleTheme: () => void;
   toggleLanguage: () => void;
+  setLanguage: (language: Language) => void;
   openBooking: (service?: string) => void;
   closeBooking: () => void;
 };

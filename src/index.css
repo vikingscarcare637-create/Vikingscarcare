@@ -93,6 +93,10 @@ video {
     @apply text-ink;
   }
 
+  .language-select option {
+    @apply bg-white text-ink;
+  }
+
   .page-hero {
     @apply relative overflow-hidden bg-carbon pt-32 text-white md:pt-40;
   }

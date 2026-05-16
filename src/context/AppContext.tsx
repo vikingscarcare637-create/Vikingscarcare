@@ -7,7 +7,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (saved) return saved;
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   });
-  const [language, setLanguage] = useState<Language>("sv");
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = window.localStorage.getItem("vcc-language") as Language | null;
+    return saved === "en" ? "en" : "sv";
+  });
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState("");
 
@@ -18,6 +21,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    window.localStorage.setItem("vcc-language", language);
   }, [language]);
 
   const value = useMemo<AppContextValue>(
@@ -28,6 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       selectedService,
       toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
       toggleLanguage: () => setLanguage((current) => (current === "sv" ? "en" : "sv")),
+      setLanguage,
       openBooking: (service?: string) => {
         setSelectedService(service ?? "");
         setBookingOpen(true);

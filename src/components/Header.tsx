@@ -1,28 +1,91 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
-import { CalendarDays, Languages, Menu, Moon, Phone, Sun, X } from "lucide-react";
+import { ChangeEvent, useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { CalendarDays, ChevronDown, Menu, Moon, Phone, Sun, X } from "lucide-react";
 import { company, navItems } from "../data/site";
+import type { Language } from "../context/contextStore";
 import { useApp } from "../context/useApp";
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, language, toggleTheme, toggleLanguage, openBooking } = useApp();
+  const [overLightSection, setOverLightSection] = useState(false);
+  const location = useLocation();
+  const { theme, language, setLanguage, toggleTheme, openBooking } = useApp();
+
+  const isTransparent = !overLightSection;
+  const labels = {
+    call: language === "sv" ? "Ring" : "Call",
+    callNow: language === "sv" ? "Ring Nu" : "Call Now",
+    book: language === "sv" ? "Boka Tid" : "Book Now",
+    menu: language === "sv" ? "Öppna meny" : "Open menu",
+    close: language === "sv" ? "Stäng meny" : "Close menu",
+    theme: language === "sv" ? "Tema" : "Theme",
+    mainMenu: language === "sv" ? "Huvudmeny" : "Main menu",
+    mobileMenu: language === "sv" ? "Mobil meny" : "Mobile menu",
+    language: language === "sv" ? "Välj språk" : "Choose language",
+    home: language === "sv" ? "Vikings Car Care hem" : "Vikings Car Care home",
+    themeToggle: language === "sv" ? "Byt färgtema" : "Change color theme"
+  };
+
+  useEffect(() => {
+    const updateHeaderTone = () => {
+      const firstSection = document.querySelector("main section");
+      const heroBottom = firstSection
+        ? firstSection.getBoundingClientRect().bottom + window.scrollY
+        : window.innerHeight * 0.85;
+
+      setOverLightSection(window.scrollY + 88 >= heroBottom);
+    };
+
+    const frame = window.requestAnimationFrame(updateHeaderTone);
+    window.addEventListener("scroll", updateHeaderTone, { passive: true });
+    window.addEventListener("resize", updateHeaderTone);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateHeaderTone);
+      window.removeEventListener("resize", updateHeaderTone);
+    };
+  }, [location.pathname]);
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `rounded-full px-3 py-2 text-sm font-bold transition ${
       isActive
         ? "bg-vikingRed text-white"
-        : "text-zinc-700 hover:bg-black/5 hover:text-vikingRed dark:text-zinc-200 dark:hover:bg-white/10"
+        : isTransparent
+          ? "text-white hover:bg-white/10 hover:text-white"
+          : "text-zinc-800 hover:bg-black/5 hover:text-vikingRed dark:text-zinc-200 dark:hover:bg-white/10"
     }`;
 
+  const utilityButtonClass = isTransparent
+    ? "secondary-button border-white/20 bg-white/10 text-white"
+    : "secondary-button";
+
+  const iconButtonClass = isTransparent ? "icon-button border-white/20 bg-white/10 text-white" : "icon-button";
+
+  const languageSelectClass = `language-select appearance-none rounded-full border px-4 py-2.5 pr-9 text-sm font-black uppercase outline-none transition focus:ring-4 focus:ring-vikingRed/25 ${
+    isTransparent
+      ? "border-white/20 bg-white/10 text-white"
+      : "border-black/10 bg-white/85 text-ink dark:border-white/10 dark:bg-white/10 dark:text-white"
+  }`;
+
+  const changeLanguage = (event: ChangeEvent<HTMLSelectElement>) => {
+    setLanguage(event.target.value as Language);
+  };
+
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-black/10 bg-white/78 backdrop-blur-2xl dark:border-white/10 dark:bg-carbon/78">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-2xl transition duration-300 ${
+        isTransparent
+          ? "border-transparent bg-transparent"
+          : "border-black/10 bg-white/88 shadow-lg dark:border-white/10 dark:bg-carbon/88"
+      }`}
+    >
       <div className="container-xl flex h-20 items-center justify-between gap-4">
-        <NavLink to="/" className="flex items-center gap-3" aria-label="Vikings Car Care hem">
+        <NavLink to="/" className="flex items-center gap-3" aria-label={labels.home}>
           <img src={company.logo} alt="Vikings Car Care logo" className="h-14 w-36 rounded-lg object-contain object-left" />
         </NavLink>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Huvudmeny">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label={labels.mainMenu}>
           {navItems.map((item) => (
             <NavLink key={item.href} to={item.href} className={navClass}>
               {language === "sv" ? item.sv : item.en}
@@ -31,22 +94,26 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <a className="secondary-button px-4 py-2.5" href={company.phoneHref}>
-            <Phone size={17} /> Ring
+          <a className={`${utilityButtonClass} px-4 py-2.5`} href={company.phoneHref}>
+            <Phone size={17} /> {labels.call}
           </a>
-          <button className="icon-button" onClick={toggleLanguage} aria-label="Byt språk">
-            <Languages size={19} />
-            <span className="sr-only">{language === "sv" ? "English" : "Svenska"}</span>
-          </button>
-          <button className="icon-button" onClick={toggleTheme} aria-label="Byt färgtema">
+          <label className="relative">
+            <span className="sr-only">{labels.language}</span>
+            <select className={languageSelectClass} value={language} onChange={changeLanguage} aria-label={labels.language}>
+              <option value="sv">SV Svenska</option>
+              <option value="en">EN English</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" size={16} />
+          </label>
+          <button className={iconButtonClass} onClick={toggleTheme} aria-label={labels.themeToggle}>
             {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
           </button>
           <button className="primary-button px-5 py-2.5" onClick={() => openBooking()}>
-            <CalendarDays size={18} /> Boka Tid
+            <CalendarDays size={18} /> {labels.book}
           </button>
         </div>
 
-        <button className="icon-button lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Öppna meny">
+        <button className={`${iconButtonClass} lg:hidden`} onClick={() => setMobileOpen(true)} aria-label={labels.menu}>
           <Menu />
         </button>
       </div>
@@ -55,11 +122,11 @@ export function Header() {
         <div className="fixed inset-0 z-50 bg-carbon/95 p-4 text-white backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between">
             <img src={company.logo} alt="Vikings Car Care logo" className="h-16 w-40 rounded-lg object-contain object-left" />
-            <button className="icon-button border-white/10 bg-white/10 text-white" onClick={() => setMobileOpen(false)} aria-label="Stäng meny">
+            <button className="icon-button border-white/10 bg-white/10 text-white" onClick={() => setMobileOpen(false)} aria-label={labels.close}>
               <X />
             </button>
           </div>
-          <nav className="mt-10 grid gap-3" aria-label="Mobil meny">
+          <nav className="mt-10 grid gap-3" aria-label={labels.mobileMenu}>
             {navItems.map((item) => (
               <NavLink
                 key={item.href}
@@ -79,17 +146,27 @@ export function Header() {
                 openBooking();
               }}
             >
-              <CalendarDays size={18} /> Boka Tid
+              <CalendarDays size={18} /> {labels.book}
             </button>
             <a className="secondary-button justify-center border-white/10 bg-white/10 py-4 text-white" href={company.phoneHref}>
-              <Phone size={18} /> Ring Nu
+              <Phone size={18} /> {labels.callNow}
             </a>
             <div className="grid grid-cols-2 gap-3">
-              <button className="secondary-button justify-center border-white/10 bg-white/10 text-white" onClick={toggleLanguage}>
-                <Languages size={18} /> {language === "sv" ? "EN" : "SV"}
-              </button>
+              <label className="relative">
+                <span className="sr-only">{labels.language}</span>
+                <select
+                  className="language-select w-full appearance-none rounded-full border border-white/10 bg-white/10 px-5 py-3 pr-9 text-center text-sm font-black uppercase text-white outline-none"
+                  value={language}
+                  onChange={changeLanguage}
+                  aria-label={labels.language}
+                >
+                  <option value="sv">SV Svenska</option>
+                  <option value="en">EN English</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2" size={16} />
+              </label>
               <button className="secondary-button justify-center border-white/10 bg-white/10 text-white" onClick={toggleTheme}>
-                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />} Tema
+                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />} {labels.theme}
               </button>
             </div>
           </div>

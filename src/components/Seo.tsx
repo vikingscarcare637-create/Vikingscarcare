@@ -1,5 +1,7 @@
 import { Helmet } from "react-helmet-async";
-import { baseUrl, company, keywords, services } from "../data/site";
+import { baseUrl, company, keywords } from "../data/site";
+import { getLocalizedServices } from "../data/localization";
+import { useApp } from "../context/useApp";
 
 type SeoProps = {
   title: string;
@@ -11,8 +13,10 @@ type SeoProps = {
 };
 
 export function Seo({ title, description, path, image = company.logo, type = "website", schema }: SeoProps) {
+  const { language } = useApp();
   const canonical = `${baseUrl}${path}`;
   const imageUrl = image.startsWith("http") ? image : `${baseUrl}${image}`;
+  const localizedServices = getLocalizedServices(language);
   const localBusinessSchema = {
     "@context": "https://schema.org",
     "@type": "AutoWash",
@@ -25,7 +29,9 @@ export function Seo({ title, description, path, image = company.logo, type = "we
     email: company.email,
     priceRange: "$$",
     description:
-      "Premium bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona.",
+      language === "sv"
+        ? "Premium bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona."
+        : "Premium car care, car wash, full detailing, polishing and ceramic coating in Karlskrona.",
     address: {
       "@type": "PostalAddress",
       streetAddress: company.streetAddress,
@@ -36,19 +42,19 @@ export function Seo({ title, description, path, image = company.logo, type = "we
     areaServed: ["Karlskrona", "Blekinge"],
     hasOfferCatalog: {
       "@type": "OfferCatalog",
-      name: "Bilvård och rekond",
-      itemListElement: services.map((service) => ({
+      name: language === "sv" ? "Bilvård och rekond" : "Car care and detailing",
+      itemListElement: localizedServices.map((service) => ({
         "@type": "Offer",
         itemOffered: {
           "@type": "Service",
-          name: service.title,
-          description: service.description,
+          name: service.displayTitle,
+          description: service.displayDescription,
           areaServed: "Karlskrona"
         },
         priceSpecification: {
           "@type": "PriceSpecification",
           priceCurrency: "SEK",
-          description: service.priceFrom
+          description: service.displayPriceFrom
         }
       }))
     },
@@ -66,7 +72,7 @@ export function Seo({ title, description, path, image = company.logo, type = "we
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonical} />
       <meta property="og:image" content={imageUrl} />
-      <meta property="og:locale" content="sv_SE" />
+      <meta property="og:locale" content={language === "sv" ? "sv_SE" : "en_GB"} />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />

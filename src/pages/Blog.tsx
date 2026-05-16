@@ -6,14 +6,19 @@ import { FaqAccordion } from "../components/FaqAccordion";
 import { SectionHeading } from "../components/SectionHeading";
 import { Seo } from "../components/Seo";
 import { useApp } from "../context/useApp";
-import { baseUrl, blogArticles, images } from "../data/site";
+import { baseUrl, images } from "../data/site";
+import { getLocalizedBlogArticles, uiText } from "../data/localization";
+import { pageCopy } from "../data/pageCopy";
 
 export function Blog() {
-  const { openBooking } = useApp();
+  const { language, openBooking } = useApp();
+  const copy = pageCopy[language].blog;
+  const ui = uiText[language];
+  const blogArticles = getLocalizedBlogArticles(language);
   const schema = {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: "Vikings Car Care Blogg",
+    name: language === "sv" ? "Vikings Car Care Blogg" : "Vikings Car Care Blog",
     url: `${baseUrl}/blogg`,
     blogPost: blogArticles.map((article) => ({
       "@type": "BlogPosting",
@@ -32,8 +37,8 @@ export function Blog() {
   return (
     <>
       <Seo
-        title="Blogg | Bilvård Karlskrona, Lackskydd & Helrekond Tips"
-        description="Guider från Vikings Car Care om keramisk lackförsegling, vintervård, biltvätt och professionell helrekond i Karlskrona."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/blogg"
         image={images.coating}
         schema={schema}
@@ -45,24 +50,23 @@ export function Blog() {
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
         </div>
         <div className="container-xl relative pb-20 pt-10 md:pb-28">
-          <p className="eyebrow text-zinc-300">Blogg</p>
+          <p className="eyebrow text-zinc-300">{copy.eyebrow}</p>
           <h1 className="mt-4 max-w-4xl text-5xl font-black leading-tight md:text-7xl">
-            Guider för bilvård, rekond och lackskydd i Karlskrona
+            {copy.title}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-200">
-            Få praktiska råd om hur du skyddar lack, interiör och fälgar året runt, från saltiga vintervägar
-            till professionell rekond och keramisk lackförsegling.
+            {copy.text}
           </p>
           <button className="primary-button mt-8 px-7 py-4" onClick={() => openBooking()}>
-            Boka Tid <ArrowRight size={19} />
+            {ui.book} <ArrowRight size={19} />
           </button>
         </div>
       </section>
 
       <AnimatedSection className="section-padding">
         <div className="container-xl">
-          <SectionHeading eyebrow="Artiklar" title="Kunskap som hjälper dig välja rätt bilvård" align="center">
-            Tydliga råd från vår verkstad, med fokus på hållbart skydd, rätt behandling och trygg bokning.
+          <SectionHeading eyebrow={copy.articlesEyebrow} title={copy.articlesTitle} align="center">
+            {copy.articlesText}
           </SectionHeading>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {blogArticles.map((article) => (
@@ -102,7 +106,7 @@ export function Blog() {
                   <img src={article.image} alt={article.title} className="h-[360px] w-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
                   <div className="absolute bottom-6 left-6 right-6 text-white">
-                    <p className="eyebrow text-zinc-200">Guide {index + 1}</p>
+                    <p className="eyebrow text-zinc-200">{copy.guide} {index + 1}</p>
                     <h2 className="mt-3 max-w-4xl text-3xl font-black md:text-5xl">{article.title}</h2>
                   </div>
                 </div>
@@ -120,37 +124,36 @@ export function Blog() {
                       </section>
                     ))}
                     <div className="mt-9 rounded-2xl border border-vikingRed/25 bg-vikingRed/10 p-6">
-                      <h3 className="text-xl font-black text-ink dark:text-white">Vill du ha personlig rekommendation?</h3>
+                      <h3 className="text-xl font-black text-ink dark:text-white">{copy.recommendationTitle}</h3>
                       <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-300">
-                        Läs mer om våra <Link className="font-bold text-vikingRed" to="/tjanster">tjänster</Link> eller
-                        kontakta oss så hjälper vi dig välja rätt nivå av tvätt, rekond, polering eller lackskydd
-                        för din bil.
+                        {copy.recommendationText} <Link className="font-bold text-vikingRed" to="/tjanster">{copy.recommendationLink}</Link>{" "}
+                        {copy.recommendationTail}
                       </p>
                       <button className="primary-button mt-5" onClick={() => openBooking()}>
-                        Boka Tid <ArrowRight size={18} />
+                        {ui.book} <ArrowRight size={18} />
                       </button>
                     </div>
                     <section className="mt-9">
                       <h3 className="mb-4 flex items-center gap-2 text-2xl font-black text-ink dark:text-white">
-                        <HelpCircle className="text-vikingRed" /> FAQ
+                        <HelpCircle className="text-vikingRed" /> {copy.faq}
                       </h3>
                       <FaqAccordion items={article.faq} />
                     </section>
                   </div>
                   <aside className="h-fit rounded-2xl border border-black/10 bg-zinc-50 p-5 dark:border-white/10 dark:bg-white/[0.06]">
-                    <p className="text-sm font-black uppercase text-vikingRed">Utforska mer</p>
+                    <p className="text-sm font-black uppercase text-vikingRed">{copy.explore}</p>
                     <div className="mt-4 grid gap-3 text-sm font-bold">
                       <Link className="hover:text-vikingRed" to="/tjanster">
-                        Tjänster
+                        {language === "sv" ? "Tjänster" : "Services"}
                       </Link>
                       <Link className="hover:text-vikingRed" to="/galleri">
-                        Galleri
+                        {language === "sv" ? "Galleri" : "Gallery"}
                       </Link>
                       <Link className="hover:text-vikingRed" to="/kontakta-oss">
-                        Kontakta Oss
+                        {language === "sv" ? "Kontakta Oss" : "Contact Us"}
                       </Link>
                       <button className="primary-button mt-3 justify-center" onClick={() => openBooking()}>
-                        Boka Tid
+                        {ui.book}
                       </button>
                     </div>
                   </aside>
@@ -161,7 +164,7 @@ export function Blog() {
         </div>
       </div>
 
-      <CTA title="Få rätt behandling för din bil" text="Skicka en bokningsförfrågan så hjälper vi dig välja mellan tvätt, rekond, polering, vax och keramisk coating." />
+      <CTA title={copy.ctaTitle} text={copy.ctaText} />
     </>
   );
 }

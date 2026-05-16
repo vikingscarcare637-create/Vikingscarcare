@@ -1,9 +1,11 @@
 import { CalendarDays, MessageCircle } from "lucide-react";
 import { company } from "../data/site";
+import { uiText } from "../data/localization";
 import { useApp } from "../context/useApp";
 
 export function FloatingActions() {
-  const { openBooking } = useApp();
+  const { language, openBooking } = useApp();
+  const copy = uiText[language];
 
   return (
     <>
@@ -11,14 +13,14 @@ export function FloatingActions() {
         <a
           href={company.whatsapp}
           className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-emerald-500 text-white shadow-2xl transition hover:scale-105"
-          aria-label="Kontakta Vikings Car Care via WhatsApp"
+          aria-label={language === "sv" ? "Kontakta Vikings Car Care via WhatsApp" : "Contact Vikings Car Care via WhatsApp"}
         >
           <MessageCircle size={24} />
         </a>
         <button
           className="flex h-14 w-14 items-center justify-center rounded-full bg-vikingRed text-white shadow-glow transition hover:scale-105"
           onClick={() => openBooking()}
-          aria-label="Boka tid"
+          aria-label={copy.book}
         >
           <CalendarDays size={24} />
         </button>
@@ -28,7 +30,7 @@ export function FloatingActions() {
           <MessageCircle size={18} /> WhatsApp
         </a>
         <button className="primary-button justify-center" onClick={() => openBooking()}>
-          <CalendarDays size={18} /> Boka Tid
+          <CalendarDays size={18} /> {copy.book}
         </button>
       </div>
     </>

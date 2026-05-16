@@ -7,12 +7,15 @@ import { Seo } from "../components/Seo";
 import { ServiceCard } from "../components/ServiceCard";
 import { useApp } from "../context/useApp";
 import { images, services } from "../data/site";
-
-const categories = ["Alla", "Tvätt", "Rekond", "Polering", "Skydd", "Special"];
+import { categoryOptions, uiText } from "../data/localization";
+import { pageCopy } from "../data/pageCopy";
 
 export function Services() {
   const [category, setCategory] = useState("Alla");
-  const { openBooking } = useApp();
+  const { language, openBooking } = useApp();
+  const copy = pageCopy[language].services;
+  const ui = uiText[language];
+  const categories = categoryOptions(language);
 
   const visibleServices = useMemo(
     () => (category === "Alla" ? services : services.filter((service) => service.category === category)),
@@ -22,8 +25,8 @@ export function Services() {
   return (
     <>
       <Seo
-        title="Tjänster | Bilvård, Biltvätt, Helrekond & Bilpolering Karlskrona"
-        description="Se alla tjänster hos Vikings Car Care: handtvätt, invändig tvätt, helrekond, polering, keramisk lackförsegling, vax, glasbehandling och mer."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/tjanster"
         image={images.workshop}
       />
@@ -34,16 +37,15 @@ export function Services() {
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/20" />
         </div>
         <div className="container-xl relative pb-20 pt-10 md:pb-28">
-          <p className="eyebrow text-zinc-300">Tjänster</p>
+          <p className="eyebrow text-zinc-300">{copy.eyebrow}</p>
           <h1 className="mt-4 max-w-4xl text-5xl font-black leading-tight md:text-7xl">
-            Premium bilvård i Karlskrona för varje detalj
+            {copy.title}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-200">
-            Från snabb handtvätt till avancerad steg 3 polering och keramisk lackförsegling. Alla tjänster utförs med
-            garanti, premiumprodukter och över 20 års erfarenhet.
+            {copy.text}
           </p>
           <button className="primary-button mt-8 px-7 py-4" onClick={() => openBooking()}>
-            Boka Tid <ArrowRight size={19} />
+            {ui.book} <ArrowRight size={19} />
           </button>
         </div>
       </section>
@@ -51,9 +53,8 @@ export function Services() {
       <AnimatedSection className="section-padding">
         <div className="container-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading eyebrow="Servicekatalog" title="Välj rätt nivå för din bil">
-              Varje kort innehåller startpris, beskrivning och snabb bokning. Vi anpassar rekommendationen efter bilens
-              skick, användning och önskat resultat.
+            <SectionHeading eyebrow={copy.catalogEyebrow} title={copy.catalogTitle}>
+              {copy.catalogText}
             </SectionHeading>
             <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-white/[0.05]">
               <Filter size={18} className="ml-2 text-vikingRed" />
@@ -61,11 +62,11 @@ export function Services() {
                 className="bg-transparent px-2 py-2 text-sm font-bold outline-none dark:text-white"
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
-                aria-label="Filtrera tjänster"
+                aria-label={copy.filterLabel}
               >
                 {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                  <option key={item.value} value={item.value}>
+                    {item.label}
                   </option>
                 ))}
               </select>
@@ -83,9 +84,7 @@ export function Services() {
       <AnimatedSection className="section-padding bg-carbon text-white">
         <div className="container-xl grid gap-8 lg:grid-cols-3">
           {[
-            ["1", "Analys", "Vi går igenom lack, interiör, fälgar och önskat resultat innan rekommendation."],
-            ["2", "Utförande", "Rätt tvättmetod, polering, skydd och detaljarbete med premiumprodukter."],
-            ["3", "Leverans", "Genomgång av resultat, underhållsråd och garanti på utfört arbete."]
+            ...copy.steps
           ].map(([step, title, text]) => (
             <div key={step} className="rounded-3xl border border-white/10 bg-white/[0.06] p-7">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-vikingRed text-xl font-black">{step}</div>
@@ -101,23 +100,21 @@ export function Services() {
           <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
             <div>
               <ShieldCheck className="text-vikingRed" size={42} />
-              <h2 className="mt-4 text-3xl font-black text-ink dark:text-white md:text-5xl">Garanti på alla tjänster</h2>
+              <h2 className="mt-4 text-3xl font-black text-ink dark:text-white md:text-5xl">{copy.guaranteeTitle}</h2>
             </div>
             <div>
               <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-300">
-                Vikings Car Care arbetar med tydliga processer och lämnar alltid garanti på alla våra tjänster. Det gör
-                din bokning trygg oavsett om du väljer biltvätt Karlskrona, helrekond Karlskrona eller keramisk
-                lackförsegling Karlskrona.
+                {copy.guaranteeText}
               </p>
               <button className="primary-button mt-7" onClick={() => openBooking()}>
-                Boka Tid <ArrowRight size={18} />
+                {ui.book} <ArrowRight size={18} />
               </button>
             </div>
           </div>
         </div>
       </AnimatedSection>
 
-      <CTA title="Boka din bilvård idag" text="Berätta vilken tjänst du vill ha så återkommer vi med en trygg rekommendation och bekräftelse." />
+      <CTA title={copy.ctaTitle} text={copy.ctaText} />
     </>
   );
 }

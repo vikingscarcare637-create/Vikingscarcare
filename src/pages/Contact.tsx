@@ -6,6 +6,8 @@ import { SectionHeading } from "../components/SectionHeading";
 import { Seo } from "../components/Seo";
 import { useApp } from "../context/useApp";
 import { company, images, services } from "../data/site";
+import { localizeService, uiText } from "../data/localization";
+import { pageCopy } from "../data/pageCopy";
 
 type ContactForm = {
   name: string;
@@ -16,7 +18,9 @@ type ContactForm = {
 };
 
 export function Contact() {
-  const { openBooking } = useApp();
+  const { language, openBooking } = useApp();
+  const copy = pageCopy[language].contact;
+  const ui = uiText[language];
   const [sent, setSent] = useState(false);
   const [form, setForm] = useState<ContactForm>({
     name: "",
@@ -33,24 +37,24 @@ export function Contact() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const body = [
-      "Kontaktförfrågan från vikingscarcare.com",
+      copy.emailIntro,
       "",
-      `Namn: ${form.name}`,
-      `Telefon: ${form.phone}`,
-      `E-post: ${form.email}`,
-      `Tjänst: ${form.service}`,
+      `${copy.name}: ${form.name}`,
+      `${copy.phone}: ${form.phone}`,
+      `${copy.email}: ${form.email}`,
+      `${copy.service}: ${form.service}`,
       "",
-      `Meddelande: ${form.message}`
+      `${copy.message}: ${form.message}`
     ].join("\n");
     setSent(true);
-    window.location.href = `${company.emailHref}?subject=${encodeURIComponent("Kontaktförfrågan Vikings Car Care")}&body=${encodeURIComponent(body)}`;
+    window.location.href = `${company.emailHref}?subject=${encodeURIComponent(copy.emailSubject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
     <>
       <Seo
-        title="Kontakta Oss | Vikings Car Care Karlskrona"
-        description="Kontakta Vikings Car Care för bilvård, biltvätt, helrekond, bilpolering och keramisk lackförsegling i Karlskrona. Ring, maila, WhatsApp eller boka online."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/kontakta-oss"
         image={images.hero}
       />
@@ -61,13 +65,13 @@ export function Contact() {
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
         </div>
         <div className="container-xl relative pb-20 pt-10 md:pb-28">
-          <p className="eyebrow text-zinc-300">Kontakta Oss</p>
-          <h1 className="mt-4 max-w-4xl text-5xl font-black leading-tight md:text-7xl">Boka premium bilvård i Karlskrona</h1>
+          <p className="eyebrow text-zinc-300">{copy.eyebrow}</p>
+          <h1 className="mt-4 max-w-4xl text-5xl font-black leading-tight md:text-7xl">{copy.title}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-200">
-            Ring, maila, skicka WhatsApp eller fyll i formuläret. Vi hjälper dig snabbt hitta rätt tjänst för bilen.
+            {copy.text}
           </p>
           <button className="primary-button mt-8 px-7 py-4" onClick={() => openBooking()}>
-            <CalendarDays size={19} /> Boka Tid
+            <CalendarDays size={19} /> {ui.book}
           </button>
         </div>
       </section>
@@ -75,16 +79,15 @@ export function Contact() {
       <AnimatedSection className="section-padding">
         <div className="container-xl grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <div>
-            <SectionHeading eyebrow="Direktkontakt" title="Vi finns på Borgmästarekajen 32">
-              Kontakta oss för professionell bilvård Karlskrona, premium biltvätt Karlskrona, bilpolering Karlskrona och
-              keramisk lackförsegling Karlskrona.
+            <SectionHeading eyebrow={copy.contactEyebrow} title={copy.contactTitle}>
+              {copy.contactText}
             </SectionHeading>
             <div className="mt-8 grid gap-4">
               {[
-                { icon: Phone, label: "Telefon", value: company.phone, href: company.phoneHref },
-                { icon: Mail, label: "E-post", value: company.email, href: company.emailHref },
-                { icon: MapPin, label: "Adress", value: company.address, href: "https://www.google.com/maps/search/?api=1&query=Borgm%C3%A4starekajen%2032%2C%20371%2034%20Karlskrona" },
-                { icon: MessageCircle, label: "WhatsApp", value: "Snabb kontakt", href: company.whatsapp }
+                { icon: Phone, label: copy.phone, value: company.phone, href: company.phoneHref },
+                { icon: Mail, label: copy.email, value: company.email, href: company.emailHref },
+                { icon: MapPin, label: copy.address, value: company.address, href: "https://www.google.com/maps/search/?api=1&query=Borgm%C3%A4starekajen%2032%2C%20371%2034%20Karlskrona" },
+                { icon: MessageCircle, label: "WhatsApp", value: copy.quickContact, href: company.whatsapp }
               ].map((item) => (
                 <a
                   key={item.label}
@@ -104,12 +107,12 @@ export function Contact() {
 
             <div className="mt-6 rounded-2xl border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-white/[0.045]">
               <h2 className="flex items-center gap-2 text-xl font-black text-ink dark:text-white">
-                <Clock className="text-vikingRed" /> Öppettider
+                <Clock className="text-vikingRed" /> {copy.hours}
               </h2>
               <div className="mt-4 grid gap-2 text-zinc-600 dark:text-zinc-300">
-                <p>Måndag-Fredag: Enligt bokning</p>
-                <p>Lördag: Enligt bokning</p>
-                <p>Söndag: Stängt</p>
+                <p>{copy.weekdays}</p>
+                <p>{copy.saturday}</p>
+                <p>{copy.sunday}</p>
               </div>
             </div>
 
@@ -127,52 +130,52 @@ export function Contact() {
             {sent ? (
               <div className="mb-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-200">
                 <div className="flex items-center gap-2 font-black">
-                  <CheckCircle2 size={18} /> Tack! Meddelandet är förberett.
+                  <CheckCircle2 size={18} /> {copy.sentTitle}
                 </div>
-                <p className="mt-2">Din e-postapp öppnas med dina uppgifter. Skicka mejlet för att kontakta oss.</p>
+                <p className="mt-2">{copy.sentText}</p>
               </div>
             ) : null}
             <form className="grid gap-4" onSubmit={submit}>
               <label className="field-label">
-                Namn
+                {copy.name}
                 <input required value={form.name} onChange={(event) => update("name", event.target.value)} />
               </label>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="field-label">
-                  Telefon
+                  {copy.phone}
                   <input required type="tel" value={form.phone} onChange={(event) => update("phone", event.target.value)} />
                 </label>
                 <label className="field-label">
-                  E-post
+                  {copy.email}
                   <input required type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
                 </label>
               </div>
               <label className="field-label">
-                Tjänst
+                {copy.service}
                 <select required value={form.service} onChange={(event) => update("service", event.target.value)}>
-                  <option value="">Välj tjänst</option>
+                  <option value="">{copy.selectService}</option>
                   {services.map((service) => (
                     <option key={service.slug} value={service.title}>
-                      {service.title}
+                      {localizeService(service, language).displayTitle}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="field-label">
-                Meddelande
+                {copy.message}
                 <textarea
                   required
                   rows={6}
-                  placeholder="Berätta vad du vill boka eller fråga om."
+                  placeholder={copy.messagePlaceholder}
                   value={form.message}
                   onChange={(event) => update("message", event.target.value)}
                 />
               </label>
               <button className="primary-button justify-center py-4" type="submit">
-                <Send size={18} /> Skicka meddelande
+                <Send size={18} /> {copy.send}
               </button>
               <button className="secondary-button justify-center py-4" type="button" onClick={() => openBooking()}>
-                <CalendarDays size={18} /> Öppna komplett bokningsformulär
+                <CalendarDays size={18} /> {copy.openBooking}
               </button>
             </form>
           </div>
@@ -193,7 +196,7 @@ export function Contact() {
         </div>
       </AnimatedSection>
 
-      <CTA title="Snabbast väg till blankare bil" text="Boka tid direkt eller kontakta oss så rekommenderar vi rätt nivå av rekond, polering och lackskydd." />
+      <CTA title={copy.ctaTitle} text={copy.ctaText} />
     </>
   );
 }
