@@ -2,20 +2,19 @@ import type { Language } from "../context/contextStore";
 import { supabase } from "./supabase";
 
 export type BookingEmailPayload = {
+  booking_id: string;
+  created_at: string;
   name: string;
   phone: string;
   email: string;
   vehicle_type: string;
   selected_service: string;
-  preferred_date: string;
-  preferred_time: string;
-  registration_number: string | null;
+  reg_number: string;
   price_text: string;
-  dropoff_time: string;
-  pickup_time: string;
   message: string | null;
   source: "website";
   language: Language;
+  logo_url?: string;
 };
 
 export type BookingEmailResponse = {
@@ -34,7 +33,7 @@ export const sendBookingEmail = async (payload: BookingEmailPayload) => {
   try {
     console.info("[booking-email] Invoking send-booking-email", {
       service: payload.selected_service,
-      preferred_date: payload.preferred_date
+      booking_id: payload.booking_id
     });
 
     const { data, error } = await supabase.functions.invoke<BookingEmailResponse>("send-booking-email", {

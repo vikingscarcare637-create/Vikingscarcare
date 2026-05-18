@@ -19,8 +19,11 @@ create table if not exists public.bookings (
   booking_date date,
   booking_time text check (booking_time is null or char_length(trim(booking_time)) <= 40),
   vehicle_type text check (vehicle_type is null or char_length(trim(vehicle_type)) <= 120),
+  reg_number text check (reg_number is null or char_length(trim(reg_number)) between 2 and 12),
+  price_text text check (price_text is null or char_length(trim(price_text)) <= 80),
   message text check (message is null or char_length(message) <= 2000),
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'completed', 'cancelled'))
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'completed', 'cancelled')),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.booking_admins (
@@ -44,6 +47,9 @@ on public.bookings (status);
 
 create index if not exists bookings_booking_date_idx
 on public.bookings (booking_date);
+
+create index if not exists bookings_reg_number_idx
+on public.bookings (lower(reg_number));
 
 alter table public.bookings enable row level security;
 alter table public.booking_admins enable row level security;
@@ -82,7 +88,7 @@ grant usage on schema public to anon, authenticated;
 grant usage on schema private to authenticated;
 
 grant insert on table public.bookings to anon, authenticated;
-grant select, update on table public.bookings to authenticated;
+grant select, update, delete on table public.bookings to authenticated;
 
 grant select, insert, update, delete on table public.booking_admins to authenticated;
 grant execute on function private.is_booking_admin() to authenticated;
@@ -93,7 +99,11 @@ on public.bookings
 for insert
 -- Authenticated is included so an already signed-in admin browser can still submit a public booking form.
 to anon, authenticated
-with check (status = 'pending');
+with check (
+  status = 'pending'
+  and reg_number is not null
+  and char_length(trim(reg_number)) between 2 and 12
+);
 
 drop policy if exists "Authenticated admins can read bookings" on public.bookings;
 create policy "Authenticated admins can read bookings"
@@ -109,6 +119,13 @@ for update
 to authenticated
 using ((select private.is_booking_admin()))
 with check ((select private.is_booking_admin()));
+
+drop policy if exists "Authenticated admins can delete bookings" on public.bookings;
+create policy "Authenticated admins can delete bookings"
+on public.bookings
+for delete
+to authenticated
+using ((select private.is_booking_admin()));
 
 drop policy if exists "Authenticated admins can read booking admins" on public.booking_admins;
 create policy "Authenticated admins can read booking admins"
@@ -145,5 +162,25 @@ values
   ('info@vikingscarcare.com', 'Default admin')
 on conflict (email) do update
 set note = excluded.note;
+
+create or replace function private.set_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+revoke all on function private.set_updated_at() from public;
+
+drop trigger if exists bookings_set_updated_at on public.bookings;
+create trigger bookings_set_updated_at
+before update on public.bookings
+for each row
+execute function private.set_updated_at();
 
 select pg_notify('pgrst', 'reload schema');

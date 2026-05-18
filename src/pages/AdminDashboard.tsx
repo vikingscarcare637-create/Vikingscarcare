@@ -2,8 +2,8 @@ import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Helmet } from "react-helmet-async";
 import {
+  AlertTriangle,
   BarChart3,
-  CalendarClock,
   CheckCircle2,
   Clock,
   Download,
@@ -15,6 +15,7 @@ import {
   Search,
   Shield,
   Sparkles,
+  Trash2,
   UserRound
 } from "lucide-react";
 import { company } from "../data/site";
@@ -29,21 +30,16 @@ type Booking = {
   customer_email: string | null;
   customer_phone: string;
   service: string;
-  booking_date: string | null;
-  booking_time: string | null;
   vehicle_type: string | null;
+  reg_number: string | null;
+  price_text: string | null;
   message: string | null;
   status: BookingStatus;
+  updated_at?: string | null;
   name: string;
   phone: string;
   email: string;
-  registration_number: string | null;
   selected_service: string;
-  price_text: string | null;
-  preferred_date: string;
-  preferred_time: string;
-  dropoff_time: string | null;
-  pickup_time: string | null;
 };
 
 const statusLabels: Record<BookingStatus, string> = {
@@ -98,10 +94,12 @@ export function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [bookingError, setBookingError] = useState("");
+  const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BookingStatus>("all");
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "upcoming" | "past">("all");
   const [updatingId, setUpdatingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -132,7 +130,7 @@ export function AdminDashboard() {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, created_at, customer_name, customer_email, customer_phone, service, booking_date, booking_time, vehicle_type, message, status"
+        "id, created_at, updated_at, customer_name, customer_email, customer_phone, service, vehicle_type, reg_number, price_text, message, status"
       )
       .order("created_at", { ascending: false });
 
@@ -156,12 +154,7 @@ export function AdminDashboard() {
         phone: booking.customer_phone,
         email: booking.customer_email ?? "",
         selected_service: booking.service,
-        preferred_date: booking.booking_date ?? "",
-        preferred_time: booking.booking_time ?? "",
-        registration_number: booking.registration_number ?? null,
-        price_text: booking.price_text ?? null,
-        dropoff_time: booking.dropoff_time ?? booking.booking_time,
-        pickup_time: booking.pickup_time ?? null
+        price_text: booking.price_text ?? null
       }))
     );
   };
@@ -216,6 +209,7 @@ export function AdminDashboard() {
 
     setUpdatingId(id);
     setBookingError("");
+    setNotice(null);
     const previousBookings = bookings;
     setBookings((current) => current.map((booking) => (booking.id === id ? { ...booking, status } : booking)));
 
@@ -226,7 +220,37 @@ export function AdminDashboard() {
       console.error("[admin] Could not update booking status", error);
       setBookings(previousBookings);
       setBookingError(formatSupabaseError("Status kunde inte uppdateras. Kontrollera adminbehörighet och RLS-policy.", error));
+      setNotice({ type: "error", text: "Status kunde inte uppdateras." });
+      return;
     }
+
+    setNotice({ type: "success", text: "Status uppdaterades." });
+  };
+
+  const deleteBooking = async () => {
+    if (!supabase || !bookingToDelete) return;
+
+    const target = bookingToDelete;
+    const previousBookings = bookings;
+
+    setDeletingId(target.id);
+    setBookingError("");
+    setNotice(null);
+    setBookingToDelete(null);
+    setBookings((current) => current.filter((booking) => booking.id !== target.id));
+
+    const { error } = await supabase.from("bookings").delete().eq("id", target.id);
+    setDeletingId("");
+
+    if (error) {
+      console.error("[admin] Could not delete booking", error);
+      setBookings(previousBookings);
+      setBookingError(formatSupabaseError("Bokningen kunde inte raderas. Kontrollera adminbehörighet och RLS-policy.", error));
+      setNotice({ type: "error", text: "Bokningen kunde inte raderas." });
+      return;
+    }
+
+    setNotice({ type: "success", text: "Bokningen raderades." });
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -234,57 +258,40 @@ export function AdminDashboard() {
   const filteredBookings = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return bookings.filter((booking) => {
-      const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
-      const matchesDate =
-        dateFilter === "all" ||
-        (dateFilter === "today" && booking.preferred_date === today) ||
-        (dateFilter === "upcoming" && booking.preferred_date >= today) ||
-        (dateFilter === "past" && booking.preferred_date < today);
-      const searchable = [
-        booking.name,
-        booking.phone,
-        booking.email,
-        booking.vehicle_type,
-        booking.registration_number ?? "",
-        booking.selected_service,
-        booking.price_text ?? "",
-        booking.message ?? ""
-      ]
-        .join(" ")
-        .toLowerCase();
+    return bookings
+      .filter((booking) => {
+        const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+        const searchable = [
+          booking.id,
+          booking.name,
+          booking.phone,
+          booking.email,
+          booking.vehicle_type,
+          booking.reg_number ?? "",
+          booking.selected_service,
+          booking.price_text ?? "",
+          booking.message ?? ""
+        ]
+          .join(" ")
+          .toLowerCase();
 
-      return matchesStatus && matchesDate && (!normalizedQuery || searchable.includes(normalizedQuery));
-    });
-  }, [bookings, dateFilter, query, statusFilter, today]);
+        return matchesStatus && (!normalizedQuery || searchable.includes(normalizedQuery));
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [bookings, query, statusFilter]);
 
   const stats = useMemo(() => {
-    const upcoming = bookings.filter(
-      (booking) => booking.preferred_date >= today && ["pending", "confirmed"].includes(booking.status)
-    ).length;
+    const createdToday = bookings.filter((booking) => booking.created_at.slice(0, 10) === today).length;
 
     return {
       total: bookings.length,
       new: bookings.filter((booking) => booking.status === "pending").length,
       confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
-      today: bookings.filter((booking) => booking.preferred_date === today).length,
-      upcoming,
-      completed: bookings.filter((booking) => booking.status === "completed").length
+      today: createdToday,
+      completed: bookings.filter((booking) => booking.status === "completed").length,
+      cancelled: bookings.filter((booking) => booking.status === "cancelled").length
     };
   }, [bookings, today]);
-
-  const upcomingBookings = useMemo(
-    () =>
-      bookings
-        .filter((booking) => booking.preferred_date >= today && booking.status !== "cancelled")
-        .sort((a, b) =>
-          `${a.preferred_date}T${a.dropoff_time ?? a.preferred_time}`.localeCompare(
-            `${b.preferred_date}T${b.dropoff_time ?? b.preferred_time}`
-          )
-        )
-        .slice(0, 5),
-    [bookings, today]
-  );
 
   const popularServices = useMemo(() => {
     const counts = bookings.reduce<Record<string, number>>((acc, booking) => {
@@ -308,10 +315,8 @@ export function AdminDashboard() {
       "Reg.nr",
       "Tjänst",
       "Pris",
-      "Datum",
-      "Inlämning",
-      "Hämtning",
-      "Meddelande"
+      "Meddelande",
+      "Boknings-ID"
     ];
     const rows = filteredBookings.map((booking) => [
       formatDateTime(booking.created_at),
@@ -320,13 +325,11 @@ export function AdminDashboard() {
       booking.phone,
       booking.email,
       booking.vehicle_type,
-      booking.registration_number ?? "",
+      booking.reg_number ?? "",
       booking.selected_service,
       booking.price_text ?? "",
-      booking.preferred_date,
-      booking.dropoff_time ?? booking.preferred_time,
-      booking.pickup_time ?? "",
-      booking.message ?? ""
+      booking.message ?? "",
+      booking.id
     ]);
     const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8;" });
@@ -425,10 +428,22 @@ export function AdminDashboard() {
               <StatCard icon={BarChart3} label="Totalt" value={stats.total} />
               <StatCard icon={Sparkles} label="Nya" value={stats.new} tone="red" />
               <StatCard icon={CheckCircle2} label="Bekräftade" value={stats.confirmed} />
-              <StatCard icon={Clock} label="Idag" value={stats.today} />
-              <StatCard icon={CalendarClock} label="Kommande" value={stats.upcoming} />
+              <StatCard icon={Clock} label="Skapade idag" value={stats.today} />
               <StatCard icon={CheckCircle2} label="Klara" value={stats.completed} />
+              <StatCard icon={AlertTriangle} label="Avbokade" value={stats.cancelled} />
             </section>
+
+            {notice ? (
+              <div
+                className={`mt-6 rounded-2xl border p-4 text-sm font-bold ${
+                  notice.type === "success"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
+                    : "border-vikingRed/30 bg-vikingRed/10 text-vikingRed dark:text-red-200"
+                }`}
+              >
+                {notice.text}
+              </div>
+            ) : null}
 
             {bookingError ? (
               <div className="mt-6 rounded-2xl border border-vikingRed/30 bg-vikingRed/10 p-4 text-sm font-bold text-vikingRed dark:text-red-200">
@@ -438,12 +453,12 @@ export function AdminDashboard() {
 
             <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
               <section className="rounded-[28px] border border-black/10 bg-white shadow-silver dark:border-white/10 dark:bg-white/[0.045]">
-                <div className="grid gap-3 border-b border-black/10 p-4 dark:border-white/10 md:grid-cols-[1fr_180px_180px]">
+                <div className="grid gap-3 border-b border-black/10 p-4 dark:border-white/10 md:grid-cols-[1fr_180px]">
                   <label className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
                     <input
                       className="w-full rounded-2xl border border-black/10 bg-zinc-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-vikingRed focus:ring-4 focus:ring-vikingRed/10 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
-                      placeholder="Sök namn, telefon, e-post, bil eller tjänst"
+                      placeholder="Sök namn, telefon, e-post, reg.nr eller tjänst"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                     />
@@ -460,28 +475,19 @@ export function AdminDashboard() {
                       </option>
                     ))}
                   </select>
-                  <select
-                    className="rounded-2xl border border-black/10 bg-zinc-50 px-4 py-3 text-sm font-bold outline-none dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
-                    value={dateFilter}
-                    onChange={(event) => setDateFilter(event.target.value as "all" | "today" | "upcoming" | "past")}
-                  >
-                    <option value="all">Alla datum</option>
-                    <option value="today">Idag</option>
-                    <option value="upcoming">Kommande</option>
-                    <option value="past">Historik</option>
-                  </select>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1080px] text-left text-sm">
+                  <table className="w-full min-w-[1120px] text-left text-sm">
                     <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-white/[0.04] dark:text-zinc-400">
                       <tr>
                         <th className="px-5 py-4">Kund</th>
                         <th className="px-5 py-4">Tjänst</th>
-                        <th className="px-5 py-4">Tid</th>
+                        <th className="px-5 py-4">Skapad</th>
                         <th className="px-5 py-4">Fordon</th>
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4">Meddelande</th>
+                        <th className="px-5 py-4">Åtgärder</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/10 dark:divide-white/10">
@@ -501,21 +507,16 @@ export function AdminDashboard() {
                           <td className="px-5 py-5">
                             <p className="font-bold">{booking.selected_service}</p>
                             {booking.price_text ? <p className="mt-1 text-xs font-black text-vikingRed">{booking.price_text}</p> : null}
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Skapad {formatDateTime(booking.created_at)}</p>
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">ID {booking.id.slice(0, 8)}</p>
                           </td>
                           <td className="px-5 py-5">
-                            <p className="font-black">{formatDate(booking.preferred_date)}</p>
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                              Lämning {(booking.dropoff_time ?? booking.preferred_time).slice(0, 5)}
-                            </p>
-                            {booking.pickup_time ? (
-                              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Hämtning {booking.pickup_time.slice(0, 5)}</p>
-                            ) : null}
+                            <p className="font-black">{formatDate(booking.created_at)}</p>
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{formatDateTime(booking.created_at)}</p>
                           </td>
                           <td className="px-5 py-5">
                             <p>{booking.vehicle_type}</p>
-                            {booking.registration_number ? (
-                              <p className="mt-2 text-xs font-black uppercase text-zinc-500 dark:text-zinc-400">{booking.registration_number}</p>
+                            {booking.reg_number ? (
+                              <p className="mt-2 text-xs font-black uppercase text-zinc-500 dark:text-zinc-400">{booking.reg_number}</p>
                             ) : null}
                           </td>
                           <td className="px-5 py-5">
@@ -535,6 +536,16 @@ export function AdminDashboard() {
                           <td className="max-w-[280px] px-5 py-5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
                             {booking.message || "Inget meddelande"}
                           </td>
+                          <td className="px-5 py-5">
+                            <button
+                              className="inline-flex items-center gap-2 rounded-full border border-vikingRed/30 bg-vikingRed/10 px-3 py-2 text-xs font-black text-vikingRed transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-200"
+                              type="button"
+                              disabled={deletingId === booking.id}
+                              onClick={() => setBookingToDelete(booking)}
+                            >
+                              <Trash2 size={14} /> Radera
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -546,21 +557,19 @@ export function AdminDashboard() {
               </section>
 
               <aside className="grid h-fit gap-6">
-                <InfoPanel title="Nästa bokningar" icon={CalendarClock}>
-                  {upcomingBookings.length ? (
+                <InfoPanel title="Senaste bokningar" icon={Clock}>
+                  {bookings.length ? (
                     <div className="grid gap-3">
-                      {upcomingBookings.map((booking) => (
+                      {bookings.slice(0, 5).map((booking) => (
                         <div key={booking.id} className="rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.06]">
                           <p className="font-black">{booking.name}</p>
-                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                            {formatDate(booking.preferred_date)} kl. {(booking.dropoff_time ?? booking.preferred_time).slice(0, 5)}
-                          </p>
+                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{formatDateTime(booking.created_at)}</p>
                           <p className="mt-1 text-xs font-bold uppercase text-vikingRed">{booking.selected_service}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Inga kommande bokningar ännu.</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Inga bokningar ännu.</p>
                   )}
                 </InfoPanel>
 
@@ -591,6 +600,32 @@ export function AdminDashboard() {
             </div>
           </div>
         )}
+        {bookingToDelete ? (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-[28px] border border-black/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-carbon">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-vikingRed/10 text-vikingRed">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black">Radera bokning?</h2>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                    Detta raderar bokningen för <span className="font-black text-ink dark:text-white">{bookingToDelete.name}</span> permanent från
+                    adminpanelen.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <button className="secondary-button" type="button" onClick={() => setBookingToDelete(null)}>
+                  Avbryt
+                </button>
+                <button className="primary-button bg-vikingRed" type="button" onClick={() => void deleteBooking()}>
+                  <Trash2 size={18} /> Radera
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </>
   );

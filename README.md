@@ -7,7 +7,7 @@ Production-ready React, TypeScript, TailwindCSS and Framer Motion website for Vi
 - Six main SEO-friendly pages: Hem, Tjänster, Om Oss, Galleri, Blogg, Kontakta Oss
 - Premium Scandinavian luxury design with dark and light mode
 - Swedish default language with English UI switcher option
-- Supabase-powered two-step booking modal with service/date selection, registration number, email notifications, email fallback and WhatsApp fallback
+- Supabase-powered two-step booking modal with service selection, required registration number, customer/admin email notifications, email fallback and WhatsApp fallback
 - Local business schema, Open Graph tags, canonical URLs, sitemap and robots.txt
 - Responsive navigation, sticky mobile booking CTA, floating WhatsApp and booking actions
 - Blog articles optimized for bilvård, biltvätt, helrekond, bilpolering and keramisk lackförsegling Karlskrona
@@ -30,24 +30,32 @@ VITE_ADMIN_EMAIL=nidaldarwishe@gmail.com
 
 ## Supabase Booking Backend
 
-Run the single SQL file in `supabase/migrations` in the Supabase SQL Editor for the project:
+For a clean Supabase project, run the base SQL file in `supabase/migrations` in the Supabase SQL Editor:
 
 ```text
 supabase/migrations/20260518153000_create_vikings_booking_system.sql
 ```
 
-The booking form inserts into `public.bookings` using the live schema: `customer_name`, `customer_email`, `customer_phone`, `service`, `booking_date`, `booking_time`, `vehicle_type`, `message`, and `status`. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
+For an existing project that already has the booking tables, also run:
+
+```text
+supabase/migrations/20260518223350_add_booking_reg_number_and_admin_delete.sql
+```
+
+The booking form inserts into `public.bookings` using the live schema: `customer_name`, `customer_email`, `customer_phone`, `service`, `vehicle_type`, `reg_number`, `price_text`, `message`, and `status`. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
 
 If the booking form shows a technical `PGRST205` or `404` for `/rest/v1/bookings`, confirm the table exists and that the project exposes `public.bookings` in Supabase Data API settings. Newer Supabase projects can disable automatic Data API exposure for SQL-created tables.
 
 ### Booking Email Notifications
 
-The booking form calls the Supabase Edge Function `send-booking-email` after a booking is saved. The function sends every booking notification to:
+The booking form calls the Supabase Edge Function `send-booking-email` after a booking is saved. Email delivery is independent: bookings remain saved even if Resend is temporarily unavailable. The function sends admin notifications to:
 
 ```text
 nidaldarwishe@gmail.com
 info@vikingscarcare.com
 ```
+
+It also sends a branded Swedish confirmation email to the customer email submitted in the booking form.
 
 Deploy `supabase/functions/send-booking-email` in Supabase and set these function secrets:
 
@@ -55,6 +63,7 @@ Deploy `supabase/functions/send-booking-email` in Supabase and set these functio
 RESEND_API_KEY=your_resend_api_key
 BOOKING_EMAIL_FROM=Vikings Car Care <bookings@your-verified-domain.com>
 SITE_URL=https://vikingscarcare.vercel.app
+BOOKING_LOGO_URL=https://your-public-logo-url.png
 ```
 
 `BOOKING_EMAIL_FROM` must use a domain verified in Resend. If the function or email provider is not configured, the booking still falls back to a prefilled email link addressed to both recipients.
@@ -64,10 +73,11 @@ The function has `verify_jwt = false` in `supabase/config.toml` because visitors
 
 The protected dashboard is available at `/admin`.
 
-Run the booking migration in Supabase SQL Editor:
+Run the booking migrations in Supabase SQL Editor:
 
 ```text
 supabase/migrations/20260518153000_create_vikings_booking_system.sql
+supabase/migrations/20260518223350_add_booking_reg_number_and_admin_delete.sql
 ```
 
 Create an admin user in Supabase Auth with email/password login. Recommended primary admin:
@@ -78,7 +88,7 @@ Username shown on site: admin
 Password: set this securely in Supabase Auth
 ```
 
-The migration allows both `nidaldarwishe@gmail.com` and `info@vikingscarcare.com` to read/update bookings after matching Supabase Auth users exist. To add another admin later:
+The migration allows both `nidaldarwishe@gmail.com` and `info@vikingscarcare.com` to read/update/delete bookings after matching Supabase Auth users exist. To add another admin later:
 
 ```sql
 insert into public.booking_admins (email, note)
@@ -91,11 +101,12 @@ The `/admin` login accepts either the configured username (`VITE_ADMIN_USERNAME`
 The admin dashboard supports:
 
 - Username/email and password login through Supabase Auth
-- Booking list with contact, vehicle, service, preferred date/time, message and status
-- Status updates for `new`, `confirmed`, `completed`, `cancelled`
-- Search and filters
+- Booking list with contact, vehicle, reg number, service, message and status
+- Status updates for `pending`, `confirmed`, `completed`, `cancelled`
+- Safe booking delete with confirmation
+- Search and status filters
 - Statistics cards
-- Upcoming bookings
+- Latest bookings
 - Popular services
 - CSV export
 

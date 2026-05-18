@@ -3,9 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
-  Clock,
   Mail,
   MessageCircle,
   Send,
@@ -34,8 +32,6 @@ type BookingFormState = {
   vehicle: string;
   registration: string;
   service: string;
-  date: string;
-  dropoffTime: string;
   message: string;
   humanConfirmed: boolean;
 };
@@ -49,36 +45,29 @@ type BookingInsertError = {
   status?: number;
 };
 
-const defaultDropoffTime = "09:00";
-const pickupTime = "18:00";
-const timeSlots = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00"];
 const featuredServices = ["Stor rekond", "Keramisk lackförsegling", "Steg 3 polering", "In- och utvändig tvätt"];
+const vehicleOptions = ["Personbil", "Lastbil", "Skåpbil", "Övrigt"] as const;
+type ValidationErrors = Partial<Record<keyof BookingFormState, string>>;
 
 const bookingCopy = {
   sv: {
     dialog: "Boka tid",
     close: "Stäng bokning",
     quick: "Snabb bokning",
-    selectTitle: "Välj tid för premium bilvård",
+    selectTitle: "Välj tjänst för premium bilvård",
     selectText: "Skicka en bokningsförfrågan så återkommer vi med bekräftelse. Du kan också ringa eller skriva på WhatsApp.",
     step: "Steg 1 av 2",
-    chooseServiceDate: "Välj tjänst och datum",
+    chooseServiceDate: "Välj tjänst",
     service: "Tjänst",
-    chooseDate: "Välj datum",
-    otherDate: "Annat datum",
-    dropoff: "Inlämningstid",
     continue: "Fortsätt",
     back: "Tillbaka",
     detailsTitle: "Dina uppgifter",
     price: "Pris",
-    date: "Datum",
-    pickupNote: "Lämna bilen kl {dropoff} och hämta kl {pickup}",
     name: "Namn *",
     phone: "Telefonnummer *",
     email: "E-post *",
     vehicle: "Fordonstyp *",
-    vehiclePlaceholder: "Ex. SUV, sedan, elbil",
-    registration: "Reg.nr (valfritt)",
+    registration: "Reg.nr *",
     message: "Meddelande",
     messagePlaceholder: "Skriv ett meddelande om du har något att meddela...",
     messageExample: 'T.ex: "Jag ska lämna nyckeln i brevlådan"',
@@ -86,8 +75,17 @@ const bookingCopy = {
     sending: "Skickar...",
     submit: "Skicka bokningsförfrågan",
     gdpr: "Uppgifterna används endast för att hantera din bokning enligt GDPR.",
-    missingSelection: "Välj tjänst, datum och inlämningstid först.",
+    missingSelection: "Välj tjänst först.",
     missingHuman: "Bekräfta bokningsförfrågan innan du skickar.",
+    validationIntro: "Kontrollera markerade fält och försök igen.",
+    requiredName: "Ange ditt namn.",
+    requiredPhone: "Ange ett svenskt telefonnummer, t.ex. 0701234567 eller +46701234567.",
+    invalidPhone: "Ange ett giltigt svenskt telefonnummer.",
+    requiredEmail: "Ange din e-postadress.",
+    invalidEmail: "Ange en giltig e-postadress.",
+    requiredVehicle: "Välj fordonstyp.",
+    requiredRegistration: "Ange registreringsnummer.",
+    invalidRegistration: "Ange ett giltigt registreringsnummer, t.ex. ABC123.",
     onlineError: "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.",
     genericError: "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.",
     emailNotificationError:
@@ -101,36 +99,28 @@ const bookingCopy = {
     notProvided: "Ej angivet",
     subject: "Bokning",
     successTitle: "Tack! Din förfrågan är skickad.",
-    successText: "Vi återkommer med bekräftelse för {service} {date} så snart vi kan.",
-    onDate: "den",
+    successText: "Vi återkommer med bekräftelse för {service} så snart vi kan.",
     successClose: "Stäng",
-    emailCopy: "Skicka kopia via e-post",
-    chooseDateFallback: "Välj datum"
+    emailCopy: "Skicka kopia via e-post"
   },
   en: {
     dialog: "Book appointment",
     close: "Close booking",
     quick: "Quick booking",
-    selectTitle: "Choose a time for premium car care",
+    selectTitle: "Choose premium car care service",
     selectText: "Send a booking request and we will return with confirmation. You can also call or message us on WhatsApp.",
     step: "Step 1 of 2",
-    chooseServiceDate: "Choose service and date",
+    chooseServiceDate: "Choose service",
     service: "Service",
-    chooseDate: "Choose date",
-    otherDate: "Other date",
-    dropoff: "Drop-off time",
     continue: "Continue",
     back: "Back",
     detailsTitle: "Your details",
     price: "Price",
-    date: "Date",
-    pickupNote: "Drop off the car at {dropoff} and collect it at {pickup}",
     name: "Name *",
     phone: "Phone number *",
     email: "Email *",
     vehicle: "Vehicle type *",
-    vehiclePlaceholder: "E.g. SUV, sedan, electric car",
-    registration: "Reg. no. (optional)",
+    registration: "Reg. no. *",
     message: "Message",
     messagePlaceholder: "Write a message if there is anything you want to add...",
     messageExample: 'E.g. "I will leave the key in the mailbox"',
@@ -138,8 +128,17 @@ const bookingCopy = {
     sending: "Sending...",
     submit: "Send booking request",
     gdpr: "Your details are only used to manage your booking according to GDPR.",
-    missingSelection: "Choose service, date and drop-off time first.",
+    missingSelection: "Choose a service first.",
     missingHuman: "Confirm the booking request before sending.",
+    validationIntro: "Check the highlighted fields and try again.",
+    requiredName: "Enter your name.",
+    requiredPhone: "Enter a Swedish phone number, e.g. 0701234567 or +46701234567.",
+    invalidPhone: "Enter a valid Swedish phone number.",
+    requiredEmail: "Enter your email address.",
+    invalidEmail: "Enter a valid email address.",
+    requiredVehicle: "Choose vehicle type.",
+    requiredRegistration: "Enter registration number.",
+    invalidRegistration: "Enter a valid registration number, e.g. ABC123.",
     onlineError: "The booking could not be sent online right now. Send it by email or WhatsApp and we will help you directly.",
     genericError: "The booking could not be sent right now. Send it by email or contact us on WhatsApp and we will help you directly.",
     emailNotificationError:
@@ -153,11 +152,9 @@ const bookingCopy = {
     notProvided: "Not provided",
     subject: "Booking",
     successTitle: "Thank you! Your request has been sent.",
-    successText: "We will return with confirmation for {service} {date} as soon as we can.",
-    onDate: "on",
+    successText: "We will return with confirmation for {service} as soon as we can.",
     successClose: "Close",
-    emailCopy: "Send copy by email",
-    chooseDateFallback: "Choose date"
+    emailCopy: "Send copy by email"
   }
 } as const;
 
@@ -168,72 +165,35 @@ const initialState: BookingFormState = {
   vehicle: "",
   registration: "",
   service: "",
-  date: "",
-  dropoffTime: defaultDropoffTime,
   message: "",
   humanConfirmed: false
 };
 
-const toIsoDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const dateFromIso = (isoDate: string) => {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const getDateFromOffset = (offset: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
-  return toIsoDate(date);
-};
-
-const localeFor = (language: Language) => (language === "sv" ? "sv-SE" : "en-GB");
-
-const formatLongDate = (isoDate: string, language: Language) =>
-  isoDate
-    ? new Intl.DateTimeFormat(localeFor(language), {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      }).format(dateFromIso(isoDate))
-    : bookingCopy[language].chooseDateFallback;
-
-const formatShortDate = (isoDate: string, language: Language) =>
-  new Intl.DateTimeFormat(localeFor(language), { day: "numeric", month: "short" }).format(dateFromIso(isoDate));
-
-const formatWeekday = (isoDate: string, language: Language) =>
-  new Intl.DateTimeFormat(localeFor(language), { weekday: "short" }).format(dateFromIso(isoDate));
-
-const bookingErrorDetails = (error: BookingInsertError, language: Language) => {
-  const copy = bookingCopy[language];
-  const details = [error.code, error.message, error.details, error.hint].filter(Boolean).join(" | ");
-  return details ? `${copy.technicalDetails}: ${details}` : "";
-};
-
 const friendlyBookingError = (error: BookingInsertError, language: Language) => {
-  const details = bookingErrorDetails(error, language);
   const text = `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
   const copy = bookingCopy[language];
-  const suffix = details ? ` ${details}` : "";
 
   if (text.includes("pgrst205") || text.includes("pgrst204") || text.includes("could not find") || text.includes("schema cache")) {
-    return `${copy.onlineError}${suffix}`;
+    return copy.onlineError;
   }
 
-  return `${copy.genericError}${suffix}`;
+  return copy.genericError;
 };
 
 const unknownBookingError = (error: unknown, language: Language) => {
   const copy = bookingCopy[language];
-  const message = error instanceof Error ? error.message : String(error);
-  return `${copy.genericError} ${copy.technicalDetails}: ${message}`;
+  console.error("[booking] User-safe unknown error", error);
+  return copy.genericError;
 };
+
+const isValidEmailAddress = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(value.trim());
+
+const isValidSwedishPhone = (value: string) => {
+  const compact = value.replace(/[\s()-]/g, "");
+  return /^(\+46|0046)7\d{8}$/.test(compact) || /^0[1-9]\d{7,10}$/.test(compact);
+};
+
+const isValidRegistrationNumber = (value: string) => /^[A-ZÅÄÖ]{3}\s?\d{2}[A-Z0-9]$/i.test(value.trim());
 
 export function BookingModal() {
   const { bookingOpen, closeBooking, selectedService, language } = useApp();
@@ -243,24 +203,13 @@ export function BookingModal() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [emailWarning, setEmailWarning] = useState("");
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const copy = bookingCopy[language];
   const ui = uiText[language];
 
   const selectedServiceInfo = useMemo(() => services.find((service) => service.title === form.service), [form.service]);
   const selectedPrice = useMemo(() => getServicePriceText(form.service, language).replace("kr", "SEK"), [form.service, language]);
   const selectedServiceDisplay = useMemo(() => getServiceDisplayTitle(form.service, language), [form.service, language]);
-  const dateCards = useMemo(
-    () =>
-      Array.from({ length: 10 }, (_, index) => {
-        const date = getDateFromOffset(index + 1);
-        return {
-          date,
-          weekday: formatWeekday(date, language),
-          label: formatShortDate(date, language)
-        };
-      }),
-    [language]
-  );
 
   useEffect(() => {
     if (bookingOpen) {
@@ -269,14 +218,14 @@ export function BookingModal() {
       setForm((current) => ({
         ...current,
         service: defaultService || current.service || services[0]?.title || "",
-        date: current.date || getDateFromOffset(1),
-        dropoffTime: current.dropoffTime || defaultDropoffTime,
+        vehicle: current.vehicle || "Personbil",
         humanConfirmed: false
       }));
       setStep("select");
       setSent(false);
       setErrorMessage("");
       setEmailWarning("");
+      setValidationErrors({});
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -289,6 +238,7 @@ export function BookingModal() {
 
   const update = (field: keyof BookingFormState, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
+    setValidationErrors((current) => ({ ...current, [field]: undefined }));
   };
 
   const buildMailto = () => {
@@ -297,15 +247,12 @@ export function BookingModal() {
       "",
       `${copy.service}: ${selectedServiceDisplay}`,
       `${copy.price}: ${selectedPrice}`,
-      `${copy.date}: ${formatLongDate(form.date, language)}`,
-      `${copy.dropoff}: ${form.dropoffTime}`,
-      `${language === "sv" ? "Hämtning" : "Pick-up"}: ${pickupTime}`,
       "",
       `${copy.name.replace(" *", "")}: ${form.name}`,
       `${copy.phone.replace(" *", "")}: ${form.phone}`,
       `${copy.email.replace(" *", "")}: ${form.email}`,
       `${copy.vehicle.replace(" *", "")}: ${form.vehicle}`,
-      `${copy.registration}: ${form.registration || copy.notProvided}`,
+      `${copy.registration.replace(" *", "")}: ${form.registration || copy.notProvided}`,
       "",
       `${copy.message}: ${form.message || copy.noMessage}`
     ].join("\n");
@@ -316,7 +263,7 @@ export function BookingModal() {
   };
 
   const continueToDetails = () => {
-    if (!form.service || !form.date || !form.dropoffTime) {
+    if (!form.service) {
       setErrorMessage(copy.missingSelection);
       return;
     }
@@ -325,10 +272,50 @@ export function BookingModal() {
     setStep("details");
   };
 
+  const validateDetails = () => {
+    const errors: ValidationErrors = {};
+
+    if (!form.name.trim()) {
+      errors.name = copy.requiredName;
+    }
+
+    if (!form.phone.trim()) {
+      errors.phone = copy.requiredPhone;
+    } else if (!isValidSwedishPhone(form.phone)) {
+      errors.phone = copy.invalidPhone;
+    }
+
+    if (!form.email.trim()) {
+      errors.email = copy.requiredEmail;
+    } else if (!isValidEmailAddress(form.email)) {
+      errors.email = copy.invalidEmail;
+    }
+
+    if (!form.vehicle.trim()) {
+      errors.vehicle = copy.requiredVehicle;
+    }
+
+    if (!form.registration.trim()) {
+      errors.registration = copy.requiredRegistration;
+    } else if (!isValidRegistrationNumber(form.registration)) {
+      errors.registration = copy.invalidRegistration;
+    }
+
+    return errors;
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
     setEmailWarning("");
+    setValidationErrors({});
+
+    const detailsErrors = validateDetails();
+    if (Object.keys(detailsErrors).length > 0) {
+      setValidationErrors(detailsErrors);
+      setErrorMessage(copy.validationIntro);
+      return;
+    }
 
     if (!form.humanConfirmed) {
       setErrorMessage(copy.missingHuman);
@@ -346,32 +333,27 @@ export function BookingModal() {
         return;
       }
 
-      const detailMessage = [
-        form.message.trim(),
-        form.registration.trim() ? `${copy.registration}: ${form.registration.trim()}` : "",
-        `${copy.price}: ${selectedPrice}`,
-        `${copy.dropoff}: ${form.dropoffTime}`,
-        `${language === "sv" ? "Hämtning" : "Pick-up"}: ${pickupTime}`
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const bookingId = crypto.randomUUID();
+      const bookingCreatedAt = new Date().toISOString();
+      const regNumber = form.registration.trim().toUpperCase().replace(/\s+/g, "");
 
       const bookingPayload = {
+        id: bookingId,
         customer_name: form.name.trim(),
-        customer_email: form.email.trim() || null,
+        customer_email: form.email.trim(),
         customer_phone: form.phone.trim(),
         service: selectedServiceDisplay,
-        booking_date: form.date || null,
-        booking_time: form.dropoffTime || null,
         vehicle_type: form.vehicle.trim() || null,
-        message: detailMessage || null,
+        reg_number: regNumber,
+        price_text: selectedPrice,
+        message: form.message.trim() || null,
         status: "pending"
       } as const;
 
       console.info("[booking] Saving booking", {
+        id: bookingPayload.id,
         service: bookingPayload.service,
-        booking_date: bookingPayload.booking_date,
-        booking_time: bookingPayload.booking_time
+        reg_number: bookingPayload.reg_number
       });
 
       const { error } = await supabase.from("bookings").insert(bookingPayload);
@@ -385,20 +367,19 @@ export function BookingModal() {
       console.info("[booking] Booking saved, sending email notification.");
 
       const { data: emailData, error: emailError } = await sendBookingEmail({
+        booking_id: bookingId,
+        created_at: bookingCreatedAt,
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
         vehicle_type: form.vehicle.trim(),
         selected_service: selectedServiceDisplay,
-        preferred_date: form.date,
-        preferred_time: form.dropoffTime,
-        registration_number: form.registration.trim() || null,
+        reg_number: regNumber,
         price_text: selectedPrice,
-        dropoff_time: form.dropoffTime,
-        pickup_time: pickupTime,
         message: form.message.trim() || null,
         source: "website",
-        language
+        language,
+        logo_url: new URL(company.logo, window.location.origin).href
       });
 
       if (emailError || emailData?.emailSent === false) {
@@ -416,8 +397,6 @@ export function BookingModal() {
       setSubmitting(false);
     }
   };
-
-  const minimumDate = getDateFromOffset(0);
 
   return (
     <AnimatePresence>
@@ -447,7 +426,6 @@ export function BookingModal() {
             {sent ? (
               <SuccessState
                 service={selectedServiceDisplay}
-                date={form.date}
                 language={language}
                 onClose={closeBooking}
                 mailto={buildMailto()}
@@ -531,55 +509,6 @@ export function BookingModal() {
                     })}
                   </div>
 
-                  <div>
-                    <div className="mb-3 flex items-center gap-2 text-sm font-black">
-                      <CalendarDays className="text-vikingRed" size={18} /> {copy.chooseDate}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                      {dateCards.map((card) => (
-                        <button
-                          key={card.date}
-                          type="button"
-                          className={`rounded-2xl border px-3 py-3 text-center transition hover:-translate-y-0.5 ${
-                            form.date === card.date
-                              ? "border-vikingRed bg-vikingRed text-white shadow-glow"
-                              : "border-black/10 bg-zinc-50 hover:border-vikingRed/40 dark:border-white/10 dark:bg-white/[0.055]"
-                          }`}
-                          onClick={() => update("date", card.date)}
-                        >
-                          <span className="block text-xs font-black uppercase">{card.weekday}</span>
-                          <span className="mt-1 block text-sm font-bold">{card.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <label className="field-label mt-3">
-                      {copy.otherDate}
-                      <input required min={minimumDate} type="date" value={form.date} onChange={(event) => update("date", event.target.value)} />
-                    </label>
-                  </div>
-
-                  <div>
-                    <div className="mb-3 flex items-center gap-2 text-sm font-black">
-                      <Clock className="text-vikingRed" size={18} /> {copy.dropoff}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {timeSlots.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          className={`rounded-2xl border px-3 py-3 text-sm font-black transition hover:-translate-y-0.5 ${
-                            form.dropoffTime === time
-                              ? "border-vikingRed bg-vikingRed text-white shadow-glow"
-                              : "border-black/10 bg-zinc-50 hover:border-vikingRed/40 dark:border-white/10 dark:bg-white/[0.055]"
-                          }`}
-                          onClick={() => update("dropoffTime", time)}
-                        >
-                          {time}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <button className="primary-button w-full justify-center py-4" type="button" onClick={continueToDetails}>
                     {copy.continue} <Sparkles size={18} />
                   </button>
@@ -603,6 +532,45 @@ export function BookingModal() {
                 </div>
 
                 <div className="space-y-4">
+                  {errorMessage ? <ErrorNotice message={errorMessage} mailto={buildMailto()} language={language} /> : null}
+
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <label className="field-label">
+                      {copy.name}
+                      <input
+                        required
+                        aria-invalid={Boolean(validationErrors.name)}
+                        value={form.name}
+                        onChange={(event) => update("name", event.target.value)}
+                      />
+                      {validationErrors.name ? <FieldError message={validationErrors.name} /> : null}
+                    </label>
+                    <label className="field-label">
+                      {copy.phone}
+                      <input
+                        required
+                        type="tel"
+                        inputMode="tel"
+                        aria-invalid={Boolean(validationErrors.phone)}
+                        value={form.phone}
+                        onChange={(event) => update("phone", event.target.value)}
+                      />
+                      {validationErrors.phone ? <FieldError message={validationErrors.phone} /> : null}
+                    </label>
+                    <label className="field-label">
+                      {copy.email}
+                      <input
+                        required
+                        type="email"
+                        inputMode="email"
+                        aria-invalid={Boolean(validationErrors.email)}
+                        value={form.email}
+                        onChange={(event) => update("email", event.target.value)}
+                      />
+                      {validationErrors.email ? <FieldError message={validationErrors.email} /> : null}
+                    </label>
+                  </div>
+
                   <div className="rounded-2xl bg-[#fff8ef] p-4 text-sm leading-7 dark:bg-white/[0.06]">
                     <p>
                       <span className="font-black">{copy.service}:</span> {selectedServiceDisplay}
@@ -610,43 +578,31 @@ export function BookingModal() {
                     <p>
                       <span className="font-black">{copy.price}:</span> <span className="font-black text-[#ff8a00]">{selectedPrice}</span>
                     </p>
-                    <p>
-                      <span className="font-black">{copy.date}:</span> {formatLongDate(form.date, language)}
-                    </p>
                   </div>
-
-                  <div className="flex items-center gap-3 rounded-2xl border border-[#ff8a00]/35 bg-[#fff3df] p-4 text-sm font-bold dark:bg-[#ff8a00]/10">
-                    <AlertCircle className="shrink-0 text-[#ff8a00]" size={19} />
-                    <span>{copy.pickupNote.replace("{dropoff}", form.dropoffTime).replace("{pickup}", pickupTime)}</span>
-                  </div>
-
-                  {errorMessage ? <ErrorNotice message={errorMessage} mailto={buildMailto()} language={language} /> : null}
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="field-label">
-                      {copy.name}
-                      <input required value={form.name} onChange={(event) => update("name", event.target.value)} />
-                    </label>
-                    <label className="field-label">
-                      {copy.phone}
-                      <input required type="tel" value={form.phone} onChange={(event) => update("phone", event.target.value)} />
-                    </label>
-                    <label className="field-label md:col-span-2">
-                      {copy.email}
-                      <input required type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
-                    </label>
-                    <label className="field-label">
                       {copy.vehicle}
-                      <input
-                        required
-                        placeholder={copy.vehiclePlaceholder}
-                        value={form.vehicle}
-                        onChange={(event) => update("vehicle", event.target.value)}
-                      />
+                      <select required aria-invalid={Boolean(validationErrors.vehicle)} value={form.vehicle} onChange={(event) => update("vehicle", event.target.value)}>
+                        {vehicleOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {validationErrors.vehicle ? <FieldError message={validationErrors.vehicle} /> : null}
                     </label>
                     <label className="field-label">
                       {copy.registration}
-                      <input placeholder="ABC123" value={form.registration} onChange={(event) => update("registration", event.target.value)} />
+                      <input
+                        required
+                        placeholder="ABC123"
+                        autoCapitalize="characters"
+                        aria-invalid={Boolean(validationErrors.registration)}
+                        value={form.registration}
+                        onChange={(event) => update("registration", event.target.value.toUpperCase())}
+                      />
+                      {validationErrors.registration ? <FieldError message={validationErrors.registration} /> : null}
                     </label>
                     <label className="field-label md:col-span-2">
                       {copy.message}
@@ -716,23 +672,24 @@ function ErrorNotice({ message, mailto, language }: { message: string; mailto: s
   );
 }
 
+function FieldError({ message }: { message: string }) {
+  return <span className="text-xs font-black text-vikingRed dark:text-red-200">{message}</span>;
+}
+
 function SuccessState({
   service,
-  date,
   language,
   onClose,
   mailto,
   emailWarning
 }: {
   service: string;
-  date: string;
   language: Language;
   onClose: () => void;
   mailto: string;
   emailWarning: string;
 }) {
   const copy = bookingCopy[language];
-  const dateText = date ? `${copy.onDate} ${formatLongDate(date, language)}` : "";
 
   return (
     <div className="p-8 text-center md:p-12">
@@ -742,7 +699,7 @@ function SuccessState({
       </div>
       <h2 className="mt-6 text-3xl font-black">{copy.successTitle}</h2>
       <p className="mx-auto mt-4 max-w-md leading-7 text-zinc-600 dark:text-zinc-300">
-        {copy.successText.replace("{service}", service).replace("{date}", dateText)}
+        {copy.successText.replace("{service}", service)}
       </p>
       {emailWarning ? (
         <p className="mx-auto mt-5 max-w-md rounded-2xl border border-[#ff8a00]/35 bg-[#fff3df] p-4 text-sm font-bold leading-6 text-[#9a5300] dark:bg-[#ff8a00]/10 dark:text-[#ffd7a3]">
