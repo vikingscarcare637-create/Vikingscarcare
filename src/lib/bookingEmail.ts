@@ -18,6 +18,32 @@ export type BookingEmailPayload = {
   language: Language;
 };
 
+const enrichFunctionError = async (error: unknown) => {
+  const functionError = error as { message?: string; context?: Response };
+
+  if (!functionError.context) {
+    return error;
+  }
+
+  const responseBody = await functionError.context
+    .clone()
+    .text()
+    .catch(() => "");
+
+  if (!responseBody) {
+    return error;
+  }
+
+  let details = responseBody;
+  try {
+    details = JSON.stringify(JSON.parse(responseBody));
+  } catch {
+    // Keep the raw response text when the function returns non-JSON.
+  }
+
+  return new Error(`${functionError.message ?? "Edge Function failed"}: ${details}`);
+};
+
 export const sendBookingEmail = async (payload: BookingEmailPayload) => {
   if (!supabase) {
     return { error: new Error("Supabase is not configured") };
@@ -34,7 +60,9 @@ export const sendBookingEmail = async (payload: BookingEmailPayload) => {
     });
 
     if (error) {
-      console.error("[booking-email] Edge Function returned an error", error);
+      const enrichedError = await enrichFunctionError(error);
+      console.error("[booking-email] Edge Function returned an error", enrichedError);
+      return { data, error: enrichedError };
     } else {
       console.info("[booking-email] Edge Function response", data);
     }
