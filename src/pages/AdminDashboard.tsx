@@ -20,15 +20,23 @@ import {
 import { company } from "../data/site";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
-type BookingStatus = "new" | "confirmed" | "completed" | "cancelled";
+type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 type Booking = {
   id: string;
   created_at: string;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string;
+  service: string;
+  booking_date: string | null;
+  booking_time: string | null;
+  vehicle_type: string | null;
+  message: string | null;
+  status: BookingStatus;
   name: string;
   phone: string;
   email: string;
-  vehicle_type: string;
   registration_number: string | null;
   selected_service: string;
   price_text: string | null;
@@ -36,20 +44,17 @@ type Booking = {
   preferred_time: string;
   dropoff_time: string | null;
   pickup_time: string | null;
-  message: string | null;
-  status: BookingStatus;
-  source: string;
 };
 
 const statusLabels: Record<BookingStatus, string> = {
-  new: "Ny",
+  pending: "Ny",
   confirmed: "Bekräftad",
   completed: "Klar",
   cancelled: "Avbokad"
 };
 
 const statusClasses: Record<BookingStatus, string> = {
-  new: "bg-vikingRed/12 text-vikingRed border-vikingRed/30",
+  pending: "bg-vikingRed/12 text-vikingRed border-vikingRed/30",
   confirmed: "bg-sky-500/12 text-sky-700 border-sky-500/30 dark:text-sky-200",
   completed: "bg-emerald-500/12 text-emerald-700 border-emerald-500/30 dark:text-emerald-200",
   cancelled: "bg-zinc-500/12 text-zinc-600 border-zinc-500/30 dark:text-zinc-300"
@@ -58,8 +63,8 @@ const statusClasses: Record<BookingStatus, string> = {
 const adminUsername = (import.meta.env.VITE_ADMIN_USERNAME as string | undefined) ?? "admin";
 const adminLoginEmail = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined) ?? "nidaldarwishe@gmail.com";
 
-const formatDate = (date: string) =>
-  new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", year: "numeric" }).format(new Date(date));
+const formatDate = (date: string | null | undefined) =>
+  date ? new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", year: "numeric" }).format(new Date(date)) : "Ej valt";
 
 const formatDateTime = (date: string) =>
   new Intl.DateTimeFormat("sv-SE", {
@@ -72,15 +77,16 @@ const formatDateTime = (date: string) =>
 
 const csvEscape = (value: string | null | undefined) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
-const isLegacyBookingShapeError = (error: { code?: string; message?: string }) => {
-  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
-  return (
-    text.includes("pgrst204") ||
-    text.includes("registration_number") ||
-    text.includes("price_text") ||
-    text.includes("dropoff_time") ||
-    text.includes("pickup_time")
-  );
+type SupabaseUiError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+const formatSupabaseError = (prefix: string, error: SupabaseUiError) => {
+  const details = [error.code, error.message, error.details, error.hint].filter(Boolean).join(" | ");
+  return details ? `${prefix} Teknisk detalj: ${details}` : prefix;
 };
 
 export function AdminDashboard() {
@@ -123,28 +129,22 @@ export function AdminDashboard() {
     setLoadingBookings(true);
     setBookingError("");
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, created_at, name, phone, email, vehicle_type, registration_number, selected_service, price_text, preferred_date, preferred_time, dropoff_time, pickup_time, message, status, source"
+        "id, created_at, customer_name, customer_email, customer_phone, service, booking_date, booking_time, vehicle_type, message, status"
       )
       .order("created_at", { ascending: false });
-
-    if (error && isLegacyBookingShapeError(error)) {
-      const fallback = await supabase
-        .from("bookings")
-        .select("id, created_at, name, phone, email, vehicle_type, selected_service, preferred_date, preferred_time, message, status, source")
-        .order("created_at", { ascending: false });
-
-      data = fallback.data as typeof data;
-      error = fallback.error;
-    }
 
     setLoadingBookings(false);
 
     if (error) {
+      console.error("[admin] Could not read bookings", error);
       setBookingError(
-        "Kunde inte läsa bokningar. Kontrollera att SQL-migrationerna är körda och att din admin-e-post finns i public.booking_admins."
+        formatSupabaseError(
+          "Kunde inte läsa bokningar. Kontrollera att SQL-migrationerna är körda och att din admin-e-post finns i public.booking_admins.",
+          error
+        )
       );
       return;
     }
@@ -152,9 +152,15 @@ export function AdminDashboard() {
     setBookings(
       ((data ?? []) as Booking[]).map((booking) => ({
         ...booking,
+        name: booking.customer_name,
+        phone: booking.customer_phone,
+        email: booking.customer_email ?? "",
+        selected_service: booking.service,
+        preferred_date: booking.booking_date ?? "",
+        preferred_time: booking.booking_time ?? "",
         registration_number: booking.registration_number ?? null,
         price_text: booking.price_text ?? null,
-        dropoff_time: booking.dropoff_time ?? booking.preferred_time,
+        dropoff_time: booking.dropoff_time ?? booking.booking_time,
         pickup_time: booking.pickup_time ?? null
       }))
     );
@@ -217,8 +223,9 @@ export function AdminDashboard() {
     setUpdatingId("");
 
     if (error) {
+      console.error("[admin] Could not update booking status", error);
       setBookings(previousBookings);
-      setBookingError("Status kunde inte uppdateras. Kontrollera adminbehörighet och RLS-policy.");
+      setBookingError(formatSupabaseError("Status kunde inte uppdateras. Kontrollera adminbehörighet och RLS-policy.", error));
     }
   };
 
@@ -253,12 +260,12 @@ export function AdminDashboard() {
 
   const stats = useMemo(() => {
     const upcoming = bookings.filter(
-      (booking) => booking.preferred_date >= today && ["new", "confirmed"].includes(booking.status)
+      (booking) => booking.preferred_date >= today && ["pending", "confirmed"].includes(booking.status)
     ).length;
 
     return {
       total: bookings.length,
-      new: bookings.filter((booking) => booking.status === "new").length,
+      new: bookings.filter((booking) => booking.status === "pending").length,
       confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
       today: bookings.filter((booking) => booking.preferred_date === today).length,
       upcoming,

@@ -43,6 +43,10 @@ type BookingFormState = {
 type BookingInsertError = {
   code?: string;
   message?: string;
+  details?: string;
+  hint?: string;
+  name?: string;
+  status?: number;
 };
 
 const defaultDropoffTime = "09:00";
@@ -87,7 +91,8 @@ const bookingCopy = {
     onlineError: "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.",
     genericError: "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.",
     emailNotificationError:
-      "Bokningen sparades i adminpanelen, men e-postnotisen kunde inte skickas. Skicka via e-post-länken så får båda mottagarna bokningen direkt.",
+      "Bokningen sparades i adminpanelen. E-postnotisen kunde inte skickas automatiskt, men vi kan fortfarande hantera bokningen.",
+    technicalDetails: "Teknisk detalj",
     errorTitle: "Något gick fel",
     emailFallback: "Skicka via e-post istället",
     whatsappFallback: "Kontakta via WhatsApp",
@@ -138,7 +143,8 @@ const bookingCopy = {
     onlineError: "The booking could not be sent online right now. Send it by email or WhatsApp and we will help you directly.",
     genericError: "The booking could not be sent right now. Send it by email or contact us on WhatsApp and we will help you directly.",
     emailNotificationError:
-      "The booking was saved in the admin panel, but the email notification could not be sent. Use the email link so both recipients receive it directly.",
+      "The booking was saved in the admin panel. The email notification could not be sent automatically, but we can still handle the booking.",
+    technicalDetails: "Technical detail",
     errorTitle: "Something went wrong",
     emailFallback: "Send by email instead",
     whatsappFallback: "Contact via WhatsApp",
@@ -204,26 +210,29 @@ const formatShortDate = (isoDate: string, language: Language) =>
 const formatWeekday = (isoDate: string, language: Language) =>
   new Intl.DateTimeFormat(localeFor(language), { weekday: "short" }).format(dateFromIso(isoDate));
 
-const isLegacyColumnError = (error: BookingInsertError) => {
-  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
-  return (
-    text.includes("pgrst204") ||
-    text.includes("registration_number") ||
-    text.includes("price_text") ||
-    text.includes("dropoff_time") ||
-    text.includes("pickup_time")
-  );
+const bookingErrorDetails = (error: BookingInsertError, language: Language) => {
+  const copy = bookingCopy[language];
+  const details = [error.code, error.message, error.details, error.hint].filter(Boolean).join(" | ");
+  return details ? `${copy.technicalDetails}: ${details}` : "";
 };
 
 const friendlyBookingError = (error: BookingInsertError, language: Language) => {
-  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  const details = bookingErrorDetails(error, language);
+  const text = `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
   const copy = bookingCopy[language];
+  const suffix = details ? ` ${details}` : "";
 
-  if (text.includes("pgrst205") || text.includes("could not find") || text.includes("schema cache")) {
-    return copy.onlineError;
+  if (text.includes("pgrst205") || text.includes("pgrst204") || text.includes("could not find") || text.includes("schema cache")) {
+    return `${copy.onlineError}${suffix}`;
   }
 
-  return copy.genericError;
+  return `${copy.genericError}${suffix}`;
+};
+
+const unknownBookingError = (error: unknown, language: Language) => {
+  const copy = bookingCopy[language];
+  const message = error instanceof Error ? error.message : String(error);
+  return `${copy.genericError} ${copy.technicalDetails}: ${message}`;
 };
 
 export function BookingModal() {
@@ -233,6 +242,7 @@ export function BookingModal() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [emailWarning, setEmailWarning] = useState("");
   const copy = bookingCopy[language];
   const ui = uiText[language];
 
@@ -266,6 +276,7 @@ export function BookingModal() {
       setStep("select");
       setSent(false);
       setErrorMessage("");
+      setEmailWarning("");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -317,6 +328,7 @@ export function BookingModal() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
+    setEmailWarning("");
 
     if (!form.humanConfirmed) {
       setErrorMessage(copy.missingHuman);
@@ -325,33 +337,16 @@ export function BookingModal() {
 
     setSubmitting(true);
 
-    if (!isSupabaseConfigured || !supabase) {
-      setSent(true);
-      setSubmitting(false);
-      window.location.href = buildMailto();
-      return;
-    }
+    try {
+      if (!isSupabaseConfigured || !supabase) {
+        console.warn("[booking] Supabase is not configured, opening email fallback.");
+        setSent(true);
+        setSubmitting(false);
+        window.location.href = buildMailto();
+        return;
+      }
 
-    const bookingPayload = {
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      vehicle_type: form.vehicle.trim(),
-      selected_service: selectedServiceDisplay,
-      preferred_date: form.date,
-      preferred_time: form.dropoffTime,
-      registration_number: form.registration.trim() || null,
-      price_text: selectedPrice,
-      dropoff_time: form.dropoffTime,
-      pickup_time: pickupTime,
-      message: form.message.trim() || null,
-      source: "website"
-    } as const;
-
-    let { error } = await supabase.from("bookings").insert(bookingPayload);
-
-    if (error && isLegacyColumnError(error)) {
-      const fallbackMessage = [
+      const detailMessage = [
         form.message.trim(),
         form.registration.trim() ? `${copy.registration}: ${form.registration.trim()}` : "",
         `${copy.price}: ${selectedPrice}`,
@@ -361,7 +356,35 @@ export function BookingModal() {
         .filter(Boolean)
         .join("\n");
 
-      const fallback = await supabase.from("bookings").insert({
+      const bookingPayload = {
+        customer_name: form.name.trim(),
+        customer_email: form.email.trim() || null,
+        customer_phone: form.phone.trim(),
+        service: selectedServiceDisplay,
+        booking_date: form.date || null,
+        booking_time: form.dropoffTime || null,
+        vehicle_type: form.vehicle.trim() || null,
+        message: detailMessage || null,
+        status: "pending"
+      } as const;
+
+      console.info("[booking] Saving booking", {
+        service: bookingPayload.service,
+        booking_date: bookingPayload.booking_date,
+        booking_time: bookingPayload.booking_time
+      });
+
+      const { error } = await supabase.from("bookings").insert(bookingPayload);
+
+      if (error) {
+        console.error("[booking] Database insert failed", error);
+        setErrorMessage(friendlyBookingError(error, language));
+        return;
+      }
+
+      console.info("[booking] Booking saved, sending email notification.");
+
+      const { data: emailData, error: emailError } = await sendBookingEmail({
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -369,34 +392,29 @@ export function BookingModal() {
         selected_service: selectedServiceDisplay,
         preferred_date: form.date,
         preferred_time: form.dropoffTime,
-        message: fallbackMessage || null,
-        source: "website"
+        registration_number: form.registration.trim() || null,
+        price_text: selectedPrice,
+        dropoff_time: form.dropoffTime,
+        pickup_time: pickupTime,
+        message: form.message.trim() || null,
+        source: "website",
+        language
       });
 
-      error = fallback.error;
-    }
+      if (emailError) {
+        console.error("[booking] Email notification failed after successful database insert", emailError);
+        setEmailWarning(`${copy.emailNotificationError} ${unknownBookingError(emailError, language)}`);
+      } else {
+        console.info("[booking] Email notification sent", emailData);
+      }
 
-    if (error) {
+      setSent(true);
+    } catch (error) {
+      console.error("[booking] Unexpected booking failure", error);
+      setErrorMessage(unknownBookingError(error, language));
+    } finally {
       setSubmitting(false);
-      console.error("Booking insert failed", error);
-      setErrorMessage(friendlyBookingError(error, language));
-      return;
     }
-
-    const { error: emailError } = await sendBookingEmail({
-      ...bookingPayload,
-      language
-    });
-
-    setSubmitting(false);
-
-    if (emailError) {
-      console.error("Booking email failed", emailError);
-      setErrorMessage(copy.emailNotificationError);
-      return;
-    }
-
-    setSent(true);
   };
 
   const minimumDate = getDateFromOffset(0);
@@ -427,7 +445,14 @@ export function BookingModal() {
             </button>
 
             {sent ? (
-              <SuccessState service={selectedServiceDisplay} date={form.date} language={language} onClose={closeBooking} mailto={buildMailto()} />
+              <SuccessState
+                service={selectedServiceDisplay}
+                date={form.date}
+                language={language}
+                onClose={closeBooking}
+                mailto={buildMailto()}
+                emailWarning={emailWarning}
+              />
             ) : step === "select" ? (
               <form className="grid lg:grid-cols-[0.92fr_1.08fr]" onSubmit={(event) => event.preventDefault()}>
                 <div className="relative min-h-[360px] overflow-hidden rounded-t-[28px] bg-carbon p-7 text-white lg:rounded-l-[28px] lg:rounded-tr-none md:p-8">
@@ -696,13 +721,15 @@ function SuccessState({
   date,
   language,
   onClose,
-  mailto
+  mailto,
+  emailWarning
 }: {
   service: string;
   date: string;
   language: Language;
   onClose: () => void;
   mailto: string;
+  emailWarning: string;
 }) {
   const copy = bookingCopy[language];
   const dateText = date ? `${copy.onDate} ${formatLongDate(date, language)}` : "";
@@ -717,6 +744,11 @@ function SuccessState({
       <p className="mx-auto mt-4 max-w-md leading-7 text-zinc-600 dark:text-zinc-300">
         {copy.successText.replace("{service}", service).replace("{date}", dateText)}
       </p>
+      {emailWarning ? (
+        <p className="mx-auto mt-5 max-w-md rounded-2xl border border-[#ff8a00]/35 bg-[#fff3df] p-4 text-sm font-bold leading-6 text-[#9a5300] dark:bg-[#ff8a00]/10 dark:text-[#ffd7a3]">
+          {emailWarning}
+        </p>
+      ) : null}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <button className="primary-button" type="button" onClick={onClose}>
           {copy.successClose}

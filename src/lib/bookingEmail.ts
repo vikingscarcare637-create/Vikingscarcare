@@ -23,9 +23,25 @@ export const sendBookingEmail = async (payload: BookingEmailPayload) => {
     return { error: new Error("Supabase is not configured") };
   }
 
-  const { data, error } = await supabase.functions.invoke("send-booking-email", {
-    body: payload
-  });
+  try {
+    console.info("[booking-email] Invoking send-booking-email", {
+      service: payload.selected_service,
+      preferred_date: payload.preferred_date
+    });
 
-  return { data, error };
+    const { data, error } = await supabase.functions.invoke("send-booking-email", {
+      body: payload
+    });
+
+    if (error) {
+      console.error("[booking-email] Edge Function returned an error", error);
+    } else {
+      console.info("[booking-email] Edge Function response", data);
+    }
+
+    return { data, error };
+  } catch (error) {
+    console.error("[booking-email] Edge Function invocation failed", error);
+    return { error: error instanceof Error ? error : new Error(String(error)) };
+  }
 };

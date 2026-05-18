@@ -30,19 +30,15 @@ VITE_ADMIN_EMAIL=nidaldarwishe@gmail.com
 
 ## Supabase Booking Backend
 
-Run the SQL files in `supabase/migrations` in the Supabase SQL Editor for the project, in timestamp order:
+Run the single SQL file in `supabase/migrations` in the Supabase SQL Editor for the project:
 
 ```text
-supabase/migrations/20260515143000_create_bookings.sql
-supabase/migrations/20260515154500_admin_booking_access.sql
-supabase/migrations/20260515170000_extend_booking_details.sql
-supabase/migrations/20260515182000_fix_admin_dashboard_access.sql
-supabase/migrations/20260518120000_add_vikings_booking_admins.sql
+supabase/migrations/20260518153000_create_vikings_booking_system.sql
 ```
 
-The booking form inserts into `public.bookings` using the browser-safe publishable key. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
+The booking form inserts into `public.bookings` using the live schema: `customer_name`, `customer_email`, `customer_phone`, `service`, `booking_date`, `booking_time`, `vehicle_type`, `message`, and `status`. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
 
-If the booking form shows an error and the browser/API response is `404` for `/rest/v1/bookings`, the live Supabase project does not have the `public.bookings` table exposed to the Data API yet. Run the migrations above and confirm the table exists in Supabase. The migrations include explicit grants for `anon` and `authenticated` because newer Supabase projects may not expose new SQL-created tables automatically.
+If the booking form shows a technical `PGRST205` or `404` for `/rest/v1/bookings`, confirm the table exists and that the project exposes `public.bookings` in Supabase Data API settings. Newer Supabase projects can disable automatic Data API exposure for SQL-created tables.
 
 ### Booking Email Notifications
 
@@ -68,14 +64,10 @@ The function has `verify_jwt = false` in `supabase/config.toml` because visitors
 
 The protected dashboard is available at `/admin`.
 
-Run all migrations in Supabase SQL Editor:
+Run the booking migration in Supabase SQL Editor:
 
 ```text
-supabase/migrations/20260515143000_create_bookings.sql
-supabase/migrations/20260515154500_admin_booking_access.sql
-supabase/migrations/20260515170000_extend_booking_details.sql
-supabase/migrations/20260515182000_fix_admin_dashboard_access.sql
-supabase/migrations/20260518120000_add_vikings_booking_admins.sql
+supabase/migrations/20260518153000_create_vikings_booking_system.sql
 ```
 
 Create an admin user in Supabase Auth with email/password login. Recommended primary admin:
@@ -86,7 +78,7 @@ Username shown on site: admin
 Password: set this securely in Supabase Auth
 ```
 
-The migration `20260518120000_add_vikings_booking_admins.sql` allows both `nidaldarwishe@gmail.com` and `info@vikingscarcare.com` to read/update bookings after matching Supabase Auth users exist. To add another admin later:
+The migration allows both `nidaldarwishe@gmail.com` and `info@vikingscarcare.com` to read/update bookings after matching Supabase Auth users exist. To add another admin later:
 
 ```sql
 insert into public.booking_admins (email, note)
@@ -94,7 +86,7 @@ values ('your-admin-email@example.com', 'Primary admin')
 on conflict (email) do nothing;
 ```
 
-The `/admin` login accepts either the configured username (`VITE_ADMIN_USERNAME`, default `admin`) or the actual admin email (`VITE_ADMIN_EMAIL`, default `nidaldarwishe@gmail.com`) plus the Supabase Auth password. If the dashboard still says it cannot read bookings, run `supabase/migrations/20260515182000_fix_admin_dashboard_access.sql` once more to refresh PostgREST permissions.
+The `/admin` login accepts either the configured username (`VITE_ADMIN_USERNAME`, default `admin`) or the actual admin email (`VITE_ADMIN_EMAIL`, default `nidaldarwishe@gmail.com`) plus the Supabase Auth password. If the dashboard still says it cannot read bookings, rerun the booking migration and confirm the authenticated user's email exists in `public.booking_admins`.
 
 The admin dashboard supports:
 

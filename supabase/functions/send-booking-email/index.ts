@@ -4,10 +4,16 @@ type BookingEmailPayload = {
   name?: string;
   phone?: string;
   email?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
   vehicle_type?: string;
   selected_service?: string;
+  service?: string;
   preferred_date?: string;
   preferred_time?: string;
+  booking_date?: string;
+  booking_time?: string;
   registration_number?: string | null;
   price_text?: string;
   dropoff_time?: string;
@@ -19,7 +25,7 @@ type BookingEmailPayload = {
 
 const recipients = ["nidaldarwishe@gmail.com", "info@vikingscarcare.com"];
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
-const fromEmail = Deno.env.get("BOOKING_EMAIL_FROM") ?? "Vikings Car Care <bookings@vikingscarcare.com>";
+const fromEmail = Deno.env.get("BOOKING_EMAIL_FROM");
 const siteUrl = Deno.env.get("SITE_URL") ?? "https://vikingscarcare.vercel.app";
 
 const corsHeaders = {
@@ -51,6 +57,9 @@ const response = (body: Record<string, unknown>, status = 200) =>
   });
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  console.info("[send-booking-email] Request received", { requestId, method: req.method });
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -60,33 +69,47 @@ Deno.serve(async (req) => {
   }
 
   if (!resendApiKey) {
+    console.error("[send-booking-email] Missing RESEND_API_KEY", { requestId });
     return response({ error: "RESEND_API_KEY is not configured" }, 500);
+  }
+
+  if (!fromEmail) {
+    console.error("[send-booking-email] Missing BOOKING_EMAIL_FROM", { requestId });
+    return response({ error: "BOOKING_EMAIL_FROM is not configured" }, 500);
   }
 
   let payload: BookingEmailPayload;
   try {
     payload = await req.json();
-  } catch {
+  } catch (error) {
+    console.error("[send-booking-email] Invalid JSON body", { requestId, error });
     return response({ error: "Invalid JSON body" }, 400);
   }
 
-  const requiredFields: (keyof BookingEmailPayload)[] = [
-    "name",
-    "phone",
-    "email",
-    "vehicle_type",
-    "selected_service",
-    "preferred_date",
-    "preferred_time"
-  ];
+  const customerName = requireText(payload, "name") || requireText(payload, "customer_name");
+  const customerPhone = requireText(payload, "phone") || requireText(payload, "customer_phone");
+  const customerEmail = requireText(payload, "email") || requireText(payload, "customer_email");
+  const service = requireText(payload, "selected_service") || requireText(payload, "service");
+  const bookingDate = requireText(payload, "preferred_date") || requireText(payload, "booking_date");
+  const bookingTime = requireText(payload, "preferred_time") || requireText(payload, "booking_time");
 
-  const missingFields = requiredFields.filter((field) => !requireText(payload, field));
+  const missingFields = [
+    ["name", customerName],
+    ["phone", customerPhone],
+    ["email", customerEmail],
+    ["vehicle_type", requireText(payload, "vehicle_type")],
+    ["service", service],
+    ["date", bookingDate],
+    ["time", bookingTime]
+  ].filter(([, value]) => !value).map(([field]) => field);
+
   if (missingFields.length > 0) {
+    console.warn("[send-booking-email] Missing booking fields", { requestId, missingFields });
     return response({ error: "Missing booking fields", fields: missingFields }, 400);
   }
 
-  const email = requireText(payload, "email");
-  if (!email.includes("@")) {
+  if (!customerEmail.includes("@")) {
+    console.warn("[send-booking-email] Invalid customer email", { requestId });
     return response({ error: "Invalid customer email" }, 400);
   }
 
@@ -129,14 +152,14 @@ Deno.serve(async (req) => {
         };
 
   const rows = [
-    [labels.service, requireText(payload, "selected_service")],
+    [labels.service, service],
     [labels.price, requireText(payload, "price_text") || labels.empty],
-    [labels.date, requireText(payload, "preferred_date")],
-    [labels.dropoff, requireText(payload, "dropoff_time") || requireText(payload, "preferred_time")],
+    [labels.date, bookingDate],
+    [labels.dropoff, requireText(payload, "dropoff_time") || bookingTime],
     [labels.pickup, requireText(payload, "pickup_time") || labels.empty],
-    [labels.name, requireText(payload, "name")],
-    [labels.phone, requireText(payload, "phone")],
-    [labels.email, email],
+    [labels.name, customerName],
+    [labels.phone, customerPhone],
+    [labels.email, customerEmail],
     [labels.vehicle, requireText(payload, "vehicle_type")],
     [labels.registration, requireText(payload, "registration_number") || labels.empty],
     [labels.message, requireText(payload, "message") || labels.empty]
@@ -153,20 +176,29 @@ Deno.serve(async (req) => {
     .join("");
 
   const textRows = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
-  const subject = `${labels.subject}: ${requireText(payload, "selected_service")} - ${requireText(payload, "preferred_date")}`;
+  const subject = `${labels.subject}: ${service} - ${bookingDate}`;
 
-  const resendResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: recipients,
-      reply_to: email,
-      subject,
-      html: `
+  console.info("[send-booking-email] Sending Resend email", {
+    requestId,
+    recipients,
+    service,
+    bookingDate
+  });
+
+  let resendResponse: Response;
+  try {
+    resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: recipients,
+        reply_to: customerEmail,
+        subject,
+        html: `
         <div style="font-family:Inter,Arial,sans-serif;background:#f5f5f5;padding:24px;">
           <div style="max-width:680px;margin:auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e8e8e8;">
             <div style="background:#0A0A0A;color:#fff;padding:24px;">
@@ -183,14 +215,20 @@ Deno.serve(async (req) => {
             </div>
           </div>
         </div>`,
-      text: `Vikings Car Care\n${labels.title}\n\n${textRows}\n\n${labels.admin}: ${siteUrl}/admin`
-    })
-  });
+        text: `Vikings Car Care\n${labels.title}\n\n${textRows}\n\n${labels.admin}: ${siteUrl}/admin`
+      })
+    });
+  } catch (error) {
+    console.error("[send-booking-email] Resend network failure", { requestId, error });
+    return response({ error: "Email provider network failure", details: String(error) }, 502);
+  }
 
   const result = await resendResponse.json().catch(() => ({}));
   if (!resendResponse.ok) {
-    return response({ error: "Email provider failed", details: result }, 502);
+    console.error("[send-booking-email] Resend failed", { requestId, status: resendResponse.status, result });
+    return response({ error: "Email provider failed", status: resendResponse.status, details: result }, 502);
   }
 
-  return response({ ok: true, id: result.id ?? null });
+  console.info("[send-booking-email] Email sent", { requestId, id: result.id ?? null });
+  return response({ ok: true, id: result.id ?? null, requestId });
 });
