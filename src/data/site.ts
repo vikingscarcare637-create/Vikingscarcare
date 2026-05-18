@@ -26,6 +26,8 @@ export const company = {
   }
 };
 
+export const bookingEmailRecipients = ["nidaldarwishe@gmail.com", company.email] as const;
+
 export const keywords = [
   "Bilvård Karlskrona",
   "Biltvätt Karlskrona",

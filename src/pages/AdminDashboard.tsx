@@ -55,6 +55,9 @@ const statusClasses: Record<BookingStatus, string> = {
   cancelled: "bg-zinc-500/12 text-zinc-600 border-zinc-500/30 dark:text-zinc-300"
 };
 
+const adminUsername = (import.meta.env.VITE_ADMIN_USERNAME as string | undefined) ?? "admin";
+const adminLoginEmail = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined) ?? "nidaldarwishe@gmail.com";
+
 const formatDate = (date: string) =>
   new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short", year: "numeric" }).format(new Date(date));
 
@@ -83,7 +86,7 @@ const isLegacyBookingShapeError = (error: { code?: string; message?: string }) =
 export function AdminDashboard() {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState("");
-  const [magicSent, setMagicSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -168,14 +171,24 @@ export function AdminDashboard() {
     if (!supabase) return;
 
     setAuthError("");
-    setMagicSent(false);
     setAuthLoading(true);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/admin`
-      }
+    const loginValue = email.trim();
+    const loginEmail = loginValue.includes("@")
+      ? loginValue
+      : loginValue.toLowerCase() === adminUsername.toLowerCase()
+        ? adminLoginEmail
+        : "";
+
+    if (!loginEmail) {
+      setAuthLoading(false);
+      setAuthError("Använd admin-e-post eller korrekt användarnamn.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password
     });
 
     setAuthLoading(false);
@@ -184,8 +197,6 @@ export function AdminDashboard() {
       setAuthError(error.message);
       return;
     }
-
-    setMagicSent(true);
   };
 
   const signOut = async () => {
@@ -344,28 +355,35 @@ export function AdminDashboard() {
               <p className="eyebrow mt-8">Skyddad admin</p>
               <h1 className="mt-3 text-4xl font-black">Logga in för att se bokningar</h1>
               <p className="mt-4 leading-7 text-zinc-600 dark:text-zinc-300">
-                Ange en admin-e-post. Supabase skickar en säker magic link till `/admin`.
+                Ange admin-användarnamn eller e-post och lösenord. Inloggningen kontrolleras av Supabase Auth.
               </p>
               <form className="mt-8 grid gap-4" onSubmit={signIn}>
                 <label className="field-label">
-                  Admin e-post
+                  Admin användarnamn eller e-post
                   <input
                     required
-                    type="email"
-                    placeholder="admin@vikingscarcare.com"
+                    type="text"
+                    autoComplete="username"
+                    placeholder={adminUsername}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                   />
                 </label>
+                <label className="field-label">
+                  Lösenord
+                  <input
+                    required
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </label>
                 <button className="primary-button justify-center py-4 disabled:cursor-not-allowed disabled:opacity-70" disabled={authLoading}>
-                  <Mail size={18} /> {authLoading ? "Skickar..." : "Skicka magic link"}
+                  <Shield size={18} /> {authLoading ? "Loggar in..." : "Logga in"}
                 </button>
               </form>
-              {magicSent ? (
-                <p className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-bold text-emerald-700 dark:text-emerald-200">
-                  Kontrollera inkorgen och klicka på länken för att öppna adminpanelen.
-                </p>
-              ) : null}
               {authError ? (
                 <p className="mt-5 rounded-2xl border border-vikingRed/30 bg-vikingRed/10 p-4 text-sm font-bold text-vikingRed dark:text-red-200">
                   {authError}

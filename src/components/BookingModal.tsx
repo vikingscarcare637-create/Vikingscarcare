@@ -13,7 +13,7 @@ import {
   Sparkles,
   X
 } from "lucide-react";
-import { company, services } from "../data/site";
+import { bookingEmailRecipients, company, services } from "../data/site";
 import {
   getServiceDisplayTitle,
   getServicePriceText,
@@ -22,6 +22,7 @@ import {
 } from "../data/localization";
 import { useApp } from "../context/useApp";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { sendBookingEmail } from "../lib/bookingEmail";
 import type { Language } from "../context/contextStore";
 
 type BookingStep = "select" | "details";
@@ -85,6 +86,8 @@ const bookingCopy = {
     missingHuman: "Bekräfta bokningsförfrågan innan du skickar.",
     onlineError: "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.",
     genericError: "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.",
+    emailNotificationError:
+      "Bokningen sparades i adminpanelen, men e-postnotisen kunde inte skickas. Skicka via e-post-länken så får båda mottagarna bokningen direkt.",
     errorTitle: "Något gick fel",
     emailFallback: "Skicka via e-post istället",
     whatsappFallback: "Kontakta via WhatsApp",
@@ -134,6 +137,8 @@ const bookingCopy = {
     missingHuman: "Confirm the booking request before sending.",
     onlineError: "The booking could not be sent online right now. Send it by email or WhatsApp and we will help you directly.",
     genericError: "The booking could not be sent right now. Send it by email or contact us on WhatsApp and we will help you directly.",
+    emailNotificationError:
+      "The booking was saved in the admin panel, but the email notification could not be sent. Use the email link so both recipients receive it directly.",
     errorTitle: "Something went wrong",
     emailFallback: "Send by email instead",
     whatsappFallback: "Contact via WhatsApp",
@@ -294,7 +299,7 @@ export function BookingModal() {
       `${copy.message}: ${form.message || copy.noMessage}`
     ].join("\n");
 
-    return `${company.emailHref}?subject=${encodeURIComponent(`${copy.subject}: ${selectedServiceDisplay || (language === "sv" ? "Bilvård" : "Car care")}`)}&body=${encodeURIComponent(
+    return `mailto:${bookingEmailRecipients.join(",")}?subject=${encodeURIComponent(`${copy.subject}: ${selectedServiceDisplay || (language === "sv" ? "Bilvård" : "Car care")}`)}&body=${encodeURIComponent(
       body
     )}`;
   };
@@ -341,7 +346,7 @@ export function BookingModal() {
       pickup_time: pickupTime,
       message: form.message.trim() || null,
       source: "website"
-    };
+    } as const;
 
     let { error } = await supabase.from("bookings").insert(bookingPayload);
 
@@ -371,11 +376,23 @@ export function BookingModal() {
       error = fallback.error;
     }
 
-    setSubmitting(false);
-
     if (error) {
+      setSubmitting(false);
       console.error("Booking insert failed", error);
       setErrorMessage(friendlyBookingError(error, language));
+      return;
+    }
+
+    const { error: emailError } = await sendBookingEmail({
+      ...bookingPayload,
+      language
+    });
+
+    setSubmitting(false);
+
+    if (emailError) {
+      console.error("Booking email failed", emailError);
+      setErrorMessage(copy.emailNotificationError);
       return;
     }
 
