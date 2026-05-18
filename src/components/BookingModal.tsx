@@ -91,7 +91,7 @@ const bookingCopy = {
     onlineError: "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.",
     genericError: "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.",
     emailNotificationError:
-      "Bokningen sparades i adminpanelen. E-postnotisen kunde inte skickas automatiskt, men vi kan fortfarande hantera bokningen.",
+      "Bokningen sparades men e-postbekräftelsen kunde inte skickas automatiskt just nu.",
     technicalDetails: "Teknisk detalj",
     errorTitle: "Något gick fel",
     emailFallback: "Skicka via e-post istället",
@@ -143,7 +143,7 @@ const bookingCopy = {
     onlineError: "The booking could not be sent online right now. Send it by email or WhatsApp and we will help you directly.",
     genericError: "The booking could not be sent right now. Send it by email or contact us on WhatsApp and we will help you directly.",
     emailNotificationError:
-      "The booking was saved in the admin panel. The email notification could not be sent automatically, but we can still handle the booking.",
+      "The booking was saved, but the email confirmation could not be sent automatically right now.",
     technicalDetails: "Technical detail",
     errorTitle: "Something went wrong",
     emailFallback: "Send by email instead",
@@ -401,9 +401,9 @@ export function BookingModal() {
         language
       });
 
-      if (emailError) {
-        console.error("[booking] Email notification failed after successful database insert", emailError);
-        setEmailWarning(`${copy.emailNotificationError} ${unknownBookingError(emailError, language)}`);
+      if (emailError || emailData?.emailSent === false) {
+        console.error("[booking] Email notification failed after successful database insert", { emailError, emailData });
+        setEmailWarning(copy.emailNotificationError);
       } else {
         console.info("[booking] Email notification sent", emailData);
       }

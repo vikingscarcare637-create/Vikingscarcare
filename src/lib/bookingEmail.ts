@@ -18,30 +18,12 @@ export type BookingEmailPayload = {
   language: Language;
 };
 
-const enrichFunctionError = async (error: unknown) => {
-  const functionError = error as { message?: string; context?: Response };
-
-  if (!functionError.context) {
-    return error;
-  }
-
-  const responseBody = await functionError.context
-    .clone()
-    .text()
-    .catch(() => "");
-
-  if (!responseBody) {
-    return error;
-  }
-
-  let details = responseBody;
-  try {
-    details = JSON.stringify(JSON.parse(responseBody));
-  } catch {
-    // Keep the raw response text when the function returns non-JSON.
-  }
-
-  return new Error(`${functionError.message ?? "Edge Function failed"}: ${details}`);
+export type BookingEmailResponse = {
+  success: boolean;
+  emailSent: boolean;
+  message?: string;
+  id?: string | null;
+  requestId?: string;
 };
 
 export const sendBookingEmail = async (payload: BookingEmailPayload) => {
@@ -55,14 +37,13 @@ export const sendBookingEmail = async (payload: BookingEmailPayload) => {
       preferred_date: payload.preferred_date
     });
 
-    const { data, error } = await supabase.functions.invoke("send-booking-email", {
+    const { data, error } = await supabase.functions.invoke<BookingEmailResponse>("send-booking-email", {
       body: payload
     });
 
     if (error) {
-      const enrichedError = await enrichFunctionError(error);
-      console.error("[booking-email] Edge Function returned an error", enrichedError);
-      return { data, error: enrichedError };
+      console.error("[booking-email] Edge Function returned an error", error);
+      return { data, error };
     } else {
       console.info("[booking-email] Edge Function response", data);
     }

@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { Resend } from "npm:resend@6.12.3";
 
 type BookingEmailPayload = {
   name?: string;
@@ -23,15 +24,66 @@ type BookingEmailPayload = {
   language?: "sv" | "en";
 };
 
+type EmailLabels = {
+  subject: string;
+  title: string;
+  service: string;
+  price: string;
+  date: string;
+  dropoff: string;
+  pickup: string;
+  name: string;
+  phone: string;
+  email: string;
+  vehicle: string;
+  registration: string;
+  message: string;
+  empty: string;
+  admin: string;
+};
+
 const recipients = ["nidaldarwishe@gmail.com", "info@vikingscarcare.com"];
-const resendApiKey = Deno.env.get("RESEND_API_KEY");
-const fromEmail = Deno.env.get("BOOKING_EMAIL_FROM");
 const siteUrl = Deno.env.get("SITE_URL") ?? "https://vikingscarcare.vercel.app";
+const emailFailureMessage = "Bokningen sparades men e-postbekräftelsen kunde inte skickas automatiskt just nu.";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400"
+};
+
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json"
+    }
+  });
+
+const emailFailureResponse = (requestId: string) =>
+  jsonResponse({
+    success: true,
+    emailSent: false,
+    message: emailFailureMessage,
+    requestId
+  });
+
+const serializeError = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    };
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(error));
+  } catch {
+    return String(error);
+  }
 };
 
 const escapeHtml = (value: string) =>
@@ -47,158 +99,151 @@ const requireText = (payload: BookingEmailPayload, key: keyof BookingEmailPayloa
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
 };
 
-const response = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json"
-    }
-  });
+const getLabels = (language: "sv" | "en"): EmailLabels =>
+  language === "en"
+    ? {
+        subject: "New booking request",
+        title: "New booking request",
+        service: "Service",
+        price: "Price",
+        date: "Date",
+        dropoff: "Drop-off",
+        pickup: "Pick-up",
+        name: "Name",
+        phone: "Phone",
+        email: "Email",
+        vehicle: "Vehicle",
+        registration: "Registration",
+        message: "Message",
+        empty: "Not provided",
+        admin: "Open admin panel"
+      }
+    : {
+        subject: "Ny bokningsförfrågan",
+        title: "Ny bokningsförfrågan",
+        service: "Tjänst",
+        price: "Pris",
+        date: "Datum",
+        dropoff: "Lämning",
+        pickup: "Hämtning",
+        name: "Namn",
+        phone: "Telefon",
+        email: "E-post",
+        vehicle: "Fordon",
+        registration: "Reg.nr",
+        message: "Meddelande",
+        empty: "Ej angivet",
+        admin: "Öppna adminpanelen"
+      };
 
 Deno.serve(async (req) => {
   const requestId = crypto.randomUUID();
-  console.info("[send-booking-email] Request received", { requestId, method: req.method });
 
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return response({ error: "Method not allowed" }, 405);
-  }
-
-  if (!resendApiKey) {
-    console.error("[send-booking-email] Missing RESEND_API_KEY", { requestId });
-    return response({ error: "RESEND_API_KEY is not configured" }, 500);
-  }
-
-  if (!fromEmail) {
-    console.error("[send-booking-email] Missing BOOKING_EMAIL_FROM", { requestId });
-    return response({ error: "BOOKING_EMAIL_FROM is not configured" }, 500);
-  }
-
-  let payload: BookingEmailPayload;
   try {
-    payload = await req.json();
-  } catch (error) {
-    console.error("[send-booking-email] Invalid JSON body", { requestId, error });
-    return response({ error: "Invalid JSON body" }, 400);
-  }
+    console.info("[send-booking-email] Request received", { requestId, method: req.method });
 
-  const customerName = requireText(payload, "name") || requireText(payload, "customer_name");
-  const customerPhone = requireText(payload, "phone") || requireText(payload, "customer_phone");
-  const customerEmail = requireText(payload, "email") || requireText(payload, "customer_email");
-  const service = requireText(payload, "selected_service") || requireText(payload, "service");
-  const bookingDate = requireText(payload, "preferred_date") || requireText(payload, "booking_date");
-  const bookingTime = requireText(payload, "preferred_time") || requireText(payload, "booking_time");
+    if (req.method === "OPTIONS") {
+      return jsonResponse({ success: true, emailSent: false, requestId });
+    }
 
-  const missingFields = [
-    ["name", customerName],
-    ["phone", customerPhone],
-    ["email", customerEmail],
-    ["vehicle_type", requireText(payload, "vehicle_type")],
-    ["service", service],
-    ["date", bookingDate],
-    ["time", bookingTime]
-  ].filter(([, value]) => !value).map(([field]) => field);
+    if (req.method !== "POST") {
+      return jsonResponse({ success: false, emailSent: false, message: "Method not allowed", requestId }, 405);
+    }
 
-  if (missingFields.length > 0) {
-    console.warn("[send-booking-email] Missing booking fields", { requestId, missingFields });
-    return response({ error: "Missing booking fields", fields: missingFields }, 400);
-  }
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("BOOKING_EMAIL_FROM");
 
-  if (!customerEmail.includes("@")) {
-    console.warn("[send-booking-email] Invalid customer email", { requestId });
-    return response({ error: "Invalid customer email" }, 400);
-  }
+    if (!resendApiKey) {
+      console.error("[send-booking-email] Missing RESEND_API_KEY", { requestId });
+      return emailFailureResponse(requestId);
+    }
 
-  const language = payload.language === "en" ? "en" : "sv";
-  const labels =
-    language === "en"
-      ? {
-          subject: "New booking request",
-          title: "New booking request",
-          service: "Service",
-          price: "Price",
-          date: "Date",
-          dropoff: "Drop-off",
-          pickup: "Pick-up",
-          name: "Name",
-          phone: "Phone",
-          email: "Email",
-          vehicle: "Vehicle",
-          registration: "Registration",
-          message: "Message",
-          empty: "Not provided",
-          admin: "Open admin panel"
-        }
-      : {
-          subject: "Ny bokningsförfrågan",
-          title: "Ny bokningsförfrågan",
-          service: "Tjänst",
-          price: "Pris",
-          date: "Datum",
-          dropoff: "Lämning",
-          pickup: "Hämtning",
-          name: "Namn",
-          phone: "Telefon",
-          email: "E-post",
-          vehicle: "Fordon",
-          registration: "Reg.nr",
-          message: "Meddelande",
-          empty: "Ej angivet",
-          admin: "Öppna adminpanelen"
-        };
+    if (!fromEmail) {
+      console.error("[send-booking-email] Missing BOOKING_EMAIL_FROM", { requestId });
+      return emailFailureResponse(requestId);
+    }
 
-  const rows = [
-    [labels.service, service],
-    [labels.price, requireText(payload, "price_text") || labels.empty],
-    [labels.date, bookingDate],
-    [labels.dropoff, requireText(payload, "dropoff_time") || bookingTime],
-    [labels.pickup, requireText(payload, "pickup_time") || labels.empty],
-    [labels.name, customerName],
-    [labels.phone, customerPhone],
-    [labels.email, customerEmail],
-    [labels.vehicle, requireText(payload, "vehicle_type")],
-    [labels.registration, requireText(payload, "registration_number") || labels.empty],
-    [labels.message, requireText(payload, "message") || labels.empty]
-  ];
+    let payload: BookingEmailPayload;
+    try {
+      payload = await req.json();
+    } catch (error) {
+      console.error("[send-booking-email] Invalid JSON body", { requestId, error: serializeError(error) });
+      return emailFailureResponse(requestId);
+    }
 
-  const htmlRows = rows
-    .map(
-      ([label, value]) => `
-        <tr>
-          <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#555;font-weight:700;width:160px;">${escapeHtml(label)}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111;">${escapeHtml(value)}</td>
-        </tr>`
-    )
-    .join("");
+    const customerName = requireText(payload, "name") || requireText(payload, "customer_name");
+    const customerPhone = requireText(payload, "phone") || requireText(payload, "customer_phone");
+    const customerEmail = requireText(payload, "email") || requireText(payload, "customer_email");
+    const service = requireText(payload, "selected_service") || requireText(payload, "service");
+    const bookingDate = requireText(payload, "preferred_date") || requireText(payload, "booking_date");
+    const bookingTime = requireText(payload, "preferred_time") || requireText(payload, "booking_time");
+    const vehicleType = requireText(payload, "vehicle_type");
 
-  const textRows = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
-  const subject = `${labels.subject}: ${service} - ${bookingDate}`;
+    const missingFields = [
+      ["name", customerName],
+      ["phone", customerPhone],
+      ["email", customerEmail],
+      ["vehicle_type", vehicleType],
+      ["service", service],
+      ["date", bookingDate],
+      ["time", bookingTime]
+    ]
+      .filter(([, value]) => !value)
+      .map(([field]) => field);
 
-  console.info("[send-booking-email] Sending Resend email", {
-    requestId,
-    recipients,
-    service,
-    bookingDate
-  });
+    if (missingFields.length > 0) {
+      console.error("[send-booking-email] Missing booking fields", { requestId, missingFields });
+      return emailFailureResponse(requestId);
+    }
 
-  let resendResponse: Response;
-  try {
-    resendResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: recipients,
-        reply_to: customerEmail,
-        subject,
-        html: `
+    if (!customerEmail.includes("@")) {
+      console.error("[send-booking-email] Invalid customer email", { requestId });
+      return emailFailureResponse(requestId);
+    }
+
+    const language = payload.language === "en" ? "en" : "sv";
+    const labels = getLabels(language);
+    const rows = [
+      [labels.service, service],
+      [labels.price, requireText(payload, "price_text") || labels.empty],
+      [labels.date, bookingDate],
+      [labels.dropoff, requireText(payload, "dropoff_time") || bookingTime],
+      [labels.pickup, requireText(payload, "pickup_time") || labels.empty],
+      [labels.name, customerName],
+      [labels.phone, customerPhone],
+      [labels.email, customerEmail],
+      [labels.vehicle, vehicleType],
+      [labels.registration, requireText(payload, "registration_number") || labels.empty],
+      [labels.message, requireText(payload, "message") || labels.empty]
+    ];
+
+    const htmlRows = rows
+      .map(
+        ([label, value]) => `
+          <tr>
+            <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#555;font-weight:700;width:160px;">${escapeHtml(label)}</td>
+            <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111;">${escapeHtml(value)}</td>
+          </tr>`
+      )
+      .join("");
+
+    const textRows = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
+    const subject = `${labels.subject}: ${service} - ${bookingDate}`;
+
+    console.info("[send-booking-email] Sending Resend email", {
+      requestId,
+      recipients,
+      service,
+      bookingDate
+    });
+
+    const resend = new Resend(resendApiKey);
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: recipients,
+      replyTo: customerEmail,
+      subject,
+      html: `
         <div style="font-family:Inter,Arial,sans-serif;background:#f5f5f5;padding:24px;">
           <div style="max-width:680px;margin:auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e8e8e8;">
             <div style="background:#0A0A0A;color:#fff;padding:24px;">
@@ -215,20 +260,23 @@ Deno.serve(async (req) => {
             </div>
           </div>
         </div>`,
-        text: `Vikings Car Care\n${labels.title}\n\n${textRows}\n\n${labels.admin}: ${siteUrl}/admin`
-      })
+      text: `Vikings Car Care\n${labels.title}\n\n${textRows}\n\n${labels.admin}: ${siteUrl}/admin`
+    });
+
+    if (error) {
+      console.error("[send-booking-email] Resend SDK failed", { requestId, error: serializeError(error) });
+      return emailFailureResponse(requestId);
+    }
+
+    console.info("[send-booking-email] Email sent", { requestId, id: data?.id ?? null });
+    return jsonResponse({
+      success: true,
+      emailSent: true,
+      id: data?.id ?? null,
+      requestId
     });
   } catch (error) {
-    console.error("[send-booking-email] Resend network failure", { requestId, error });
-    return response({ error: "Email provider network failure", details: String(error) }, 502);
+    console.error("[send-booking-email] Unexpected runtime error", { requestId, error: serializeError(error) });
+    return emailFailureResponse(requestId);
   }
-
-  const result = await resendResponse.json().catch(() => ({}));
-  if (!resendResponse.ok) {
-    console.error("[send-booking-email] Resend failed", { requestId, status: resendResponse.status, result });
-    return response({ error: "Email provider failed", status: resendResponse.status, details: result }, 502);
-  }
-
-  console.info("[send-booking-email] Email sent", { requestId, id: result.id ?? null });
-  return response({ ok: true, id: result.id ?? null, requestId });
 });
