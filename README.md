@@ -7,7 +7,7 @@ Production-ready React, TypeScript, TailwindCSS and Framer Motion website for Vi
 - Six main SEO-friendly pages: Hem, Tjänster, Om Oss, Galleri, Blogg, Kontakta Oss
 - Premium Scandinavian luxury design with dark and light mode
 - Swedish default language with English UI switcher option
-- Supabase-powered two-step booking modal with service selection, required registration number, customer/admin email notifications, email fallback and WhatsApp fallback
+- Supabase-powered two-step booking modal with service/date selection, no Sunday bookings, required registration number, customer/admin email notifications, email fallback and WhatsApp fallback
 - Local business schema, Open Graph tags, canonical URLs, sitemap and robots.txt
 - Responsive navigation, sticky mobile booking CTA, floating WhatsApp and booking actions
 - Blog articles optimized for bilvård, biltvätt, helrekond, bilpolering and keramisk lackförsegling Karlskrona
@@ -40,9 +40,10 @@ For an existing project that already has the booking tables, also run:
 
 ```text
 supabase/migrations/20260518223350_add_booking_reg_number_and_admin_delete.sql
+supabase/migrations/20260519084837_require_booking_date_no_sundays.sql
 ```
 
-The booking form inserts into `public.bookings` using the live schema: `customer_name`, `customer_email`, `customer_phone`, `service`, `vehicle_type`, `reg_number`, `price_text`, `message`, and `status`. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings.
+The booking form inserts into `public.bookings` using the live schema: `customer_name`, `customer_email`, `customer_phone`, `service`, `booking_date`, `vehicle_type`, `reg_number`, `price_text`, `message`, and `status`. Row Level Security is enabled so public visitors can create booking requests, but they cannot read, update, or delete bookings. New public bookings require a booking date, and Sundays are blocked in both the UI and insert policy.
 
 If the booking form shows a technical `PGRST205` or `404` for `/rest/v1/bookings`, confirm the table exists and that the project exposes `public.bookings` in Supabase Data API settings. Newer Supabase projects can disable automatic Data API exposure for SQL-created tables.
 
@@ -78,6 +79,7 @@ Run the booking migrations in Supabase SQL Editor:
 ```text
 supabase/migrations/20260518153000_create_vikings_booking_system.sql
 supabase/migrations/20260518223350_add_booking_reg_number_and_admin_delete.sql
+supabase/migrations/20260519084837_require_booking_date_no_sundays.sql
 ```
 
 Create an admin user in Supabase Auth with email/password login. Recommended primary admin:
@@ -101,7 +103,7 @@ The `/admin` login accepts either the configured username (`VITE_ADMIN_USERNAME`
 The admin dashboard supports:
 
 - Username/email and password login through Supabase Auth
-- Booking list with contact, vehicle, reg number, service, message and status
+- Booking list with contact, vehicle, reg number, booking date, service, message and status
 - Status updates for `pending`, `confirmed`, `completed`, `cancelled`
 - Safe booking delete with confirmation
 - Search and status filters

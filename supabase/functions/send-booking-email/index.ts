@@ -4,6 +4,7 @@ import { Resend } from "npm:resend@6.12.3";
 type BookingEmailPayload = {
   booking_id?: string;
   created_at?: string;
+  booking_date?: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -112,6 +113,26 @@ const formatTimestamp = (isoValue: string) => {
   }).format(date);
 };
 
+const formatBookingDate = (isoValue: string) => {
+  if (!isoValue) {
+    return "Ej valt";
+  }
+
+  const [year, month, day] = isoValue.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) {
+    return isoValue;
+  }
+
+  return new Intl.DateTimeFormat("sv-SE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Stockholm"
+  }).format(date);
+};
+
 const tableRows = (rows: string[][]) =>
   rows
     .map(
@@ -149,6 +170,7 @@ const buildAdminEmail = ({
   vehicleType,
   regNumber,
   service,
+  bookingDate,
   priceText,
   message,
   logoUrl
@@ -161,6 +183,7 @@ const buildAdminEmail = ({
   vehicleType: string;
   regNumber: string;
   service: string;
+  bookingDate: string;
   priceText: string;
   message: string;
   logoUrl: string;
@@ -169,6 +192,7 @@ const buildAdminEmail = ({
     ["Boknings-ID", bookingId],
     ["Skickad", timestamp],
     ["Tjänst", service],
+    ["Bokningsdatum", bookingDate],
     ["Pris", priceText],
     ["Namn", customerName],
     ["Telefon", customerPhone],
@@ -211,6 +235,7 @@ const buildCustomerEmail = ({
   vehicleType,
   regNumber,
   service,
+  bookingDate,
   priceText,
   message,
   logoUrl
@@ -219,12 +244,14 @@ const buildCustomerEmail = ({
   vehicleType: string;
   regNumber: string;
   service: string;
+  bookingDate: string;
   priceText: string;
   message: string;
   logoUrl: string;
 }): EmailContent => {
   const rows = [
     ["Tjänst", service],
+    ["Bokningsdatum", bookingDate],
     ["Pris", priceText],
     ["Fordonstyp", vehicleType],
     ["Reg.nr", regNumber],
@@ -347,6 +374,8 @@ Deno.serve(async (req) => {
 
     const bookingId = requireText(payload, "booking_id") || requestId;
     const timestamp = formatTimestamp(requireText(payload, "created_at") || new Date().toISOString());
+    const rawBookingDate = requireText(payload, "booking_date");
+    const bookingDate = formatBookingDate(rawBookingDate);
     const customerName = requireText(payload, "name") || requireText(payload, "customer_name");
     const customerPhone = requireText(payload, "phone") || requireText(payload, "customer_phone");
     const customerEmail = requireText(payload, "email") || requireText(payload, "customer_email");
@@ -364,6 +393,7 @@ Deno.serve(async (req) => {
       ["email", customerEmail],
       ["vehicle_type", vehicleType],
       ["reg_number", regNumber],
+      ["booking_date", rawBookingDate],
       ["service", service]
     ]
       .filter(([, value]) => !value)
@@ -389,6 +419,7 @@ Deno.serve(async (req) => {
       vehicleType,
       regNumber,
       service,
+      bookingDate,
       priceText,
       message,
       logoUrl
@@ -398,6 +429,7 @@ Deno.serve(async (req) => {
       vehicleType,
       regNumber,
       service,
+      bookingDate,
       priceText,
       message,
       logoUrl

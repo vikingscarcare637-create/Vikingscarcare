@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Mail,
   MessageCircle,
@@ -32,6 +34,7 @@ type BookingFormState = {
   vehicle: string;
   registration: string;
   service: string;
+  date: string;
   message: string;
   humanConfirmed: boolean;
 };
@@ -47,6 +50,10 @@ type BookingInsertError = {
 
 const featuredServices = ["Stor rekond", "Keramisk lackförsegling", "Steg 3 polering", "In- och utvändig tvätt"];
 const vehicleOptions = ["Personbil", "Lastbil", "Skåpbil", "Övrigt"] as const;
+const weekDays = {
+  sv: ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"],
+  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+} as const;
 type ValidationErrors = Partial<Record<keyof BookingFormState, string>>;
 
 const bookingCopy = {
@@ -57,8 +64,13 @@ const bookingCopy = {
     selectTitle: "Välj tjänst för premium bilvård",
     selectText: "Skicka en bokningsförfrågan så återkommer vi med bekräftelse. Du kan också ringa eller skriva på WhatsApp.",
     step: "Steg 1 av 2",
-    chooseServiceDate: "Välj tjänst",
+    chooseServiceDate: "Välj tjänst och datum",
     service: "Tjänst",
+    date: "Datum *",
+    selectedDate: "Valt datum",
+    previousMonth: "Föregående månad",
+    nextMonth: "Nästa månad",
+    noSunday: "Söndagar är stängda och kan inte bokas.",
     continue: "Fortsätt",
     back: "Tillbaka",
     detailsTitle: "Dina uppgifter",
@@ -75,7 +87,7 @@ const bookingCopy = {
     sending: "Skickar...",
     submit: "Skicka bokningsförfrågan",
     gdpr: "Uppgifterna används endast för att hantera din bokning enligt GDPR.",
-    missingSelection: "Välj tjänst först.",
+    missingSelection: "Välj tjänst och bokningsdatum först.",
     missingHuman: "Bekräfta bokningsförfrågan innan du skickar.",
     validationIntro: "Kontrollera markerade fält och försök igen.",
     requiredName: "Ange ditt namn.",
@@ -86,6 +98,9 @@ const bookingCopy = {
     requiredVehicle: "Välj fordonstyp.",
     requiredRegistration: "Ange registreringsnummer.",
     invalidRegistration: "Ange ett giltigt registreringsnummer, t.ex. ABC123.",
+    requiredDate: "Välj ett bokningsdatum.",
+    invalidDate: "Välj ett kommande bokningsdatum.",
+    invalidSunday: "Det går inte att boka på söndagar. Välj en annan dag.",
     onlineError: "Bokningen kunde inte skickas online just nu. Skicka via e-post eller WhatsApp så hjälper vi dig direkt.",
     genericError: "Bokningen kunde inte skickas just nu. Skicka via e-post eller kontakta oss via WhatsApp så hjälper vi dig direkt.",
     emailNotificationError:
@@ -99,7 +114,8 @@ const bookingCopy = {
     notProvided: "Ej angivet",
     subject: "Bokning",
     successTitle: "Tack! Din förfrågan är skickad.",
-    successText: "Vi återkommer med bekräftelse för {service} så snart vi kan.",
+    successText: "Vi återkommer med bekräftelse för {service} {date} så snart vi kan.",
+    onDate: "den",
     successClose: "Stäng",
     emailCopy: "Skicka kopia via e-post"
   },
@@ -110,8 +126,13 @@ const bookingCopy = {
     selectTitle: "Choose premium car care service",
     selectText: "Send a booking request and we will return with confirmation. You can also call or message us on WhatsApp.",
     step: "Step 1 of 2",
-    chooseServiceDate: "Choose service",
+    chooseServiceDate: "Choose service and date",
     service: "Service",
+    date: "Date *",
+    selectedDate: "Selected date",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    noSunday: "Sundays are closed and cannot be booked.",
     continue: "Continue",
     back: "Back",
     detailsTitle: "Your details",
@@ -128,7 +149,7 @@ const bookingCopy = {
     sending: "Sending...",
     submit: "Send booking request",
     gdpr: "Your details are only used to manage your booking according to GDPR.",
-    missingSelection: "Choose a service first.",
+    missingSelection: "Choose a service and booking date first.",
     missingHuman: "Confirm the booking request before sending.",
     validationIntro: "Check the highlighted fields and try again.",
     requiredName: "Enter your name.",
@@ -139,6 +160,9 @@ const bookingCopy = {
     requiredVehicle: "Choose vehicle type.",
     requiredRegistration: "Enter registration number.",
     invalidRegistration: "Enter a valid registration number, e.g. ABC123.",
+    requiredDate: "Choose a booking date.",
+    invalidDate: "Choose an upcoming booking date.",
+    invalidSunday: "Sunday bookings are not available. Choose another day.",
     onlineError: "The booking could not be sent online right now. Send it by email or WhatsApp and we will help you directly.",
     genericError: "The booking could not be sent right now. Send it by email or contact us on WhatsApp and we will help you directly.",
     emailNotificationError:
@@ -152,7 +176,8 @@ const bookingCopy = {
     notProvided: "Not provided",
     subject: "Booking",
     successTitle: "Thank you! Your request has been sent.",
-    successText: "We will return with confirmation for {service} as soon as we can.",
+    successText: "We will return with confirmation for {service} {date} as soon as we can.",
+    onDate: "on",
     successClose: "Close",
     emailCopy: "Send copy by email"
   }
@@ -165,8 +190,69 @@ const initialState: BookingFormState = {
   vehicle: "",
   registration: "",
   service: "",
+  date: "",
   message: "",
   humanConfirmed: false
+};
+
+const toIsoDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const dateFromIso = (isoDate: string) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const localeFor = (language: Language) => (language === "sv" ? "sv-SE" : "en-GB");
+
+const formatLongDate = (isoDate: string, language: Language) =>
+  isoDate
+    ? new Intl.DateTimeFormat(localeFor(language), {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).format(dateFromIso(isoDate))
+    : "";
+
+const formatMonth = (date: Date, language: Language) =>
+  new Intl.DateTimeFormat(localeFor(language), { month: "long", year: "numeric" }).format(date);
+
+const isSunday = (isoDate: string) => dateFromIso(isoDate).getDay() === 0;
+
+const isBeforeToday = (isoDate: string) => isoDate < toIsoDate(new Date());
+
+const getNextBookableDate = () => {
+  const date = new Date();
+  for (let index = 0; index < 14; index += 1) {
+    const isoDate = toIsoDate(date);
+    if (!isSunday(isoDate)) {
+      return isoDate;
+    }
+    date.setDate(date.getDate() + 1);
+  }
+  return toIsoDate(date);
+};
+
+const getCalendarDays = (visibleMonth: Date) => {
+  const firstDay = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const startDate = new Date(firstDay);
+  startDate.setDate(firstDay.getDate() - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + index);
+    return {
+      isoDate: toIsoDate(day),
+      dayNumber: day.getDate(),
+      inMonth: day.getMonth() === visibleMonth.getMonth()
+    };
+  });
 };
 
 const friendlyBookingError = (error: BookingInsertError, language: Language) => {
@@ -204,23 +290,32 @@ export function BookingModal() {
   const [errorMessage, setErrorMessage] = useState("");
   const [emailWarning, setEmailWarning] = useState("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const nextDate = dateFromIso(getNextBookableDate());
+    return new Date(nextDate.getFullYear(), nextDate.getMonth(), 1);
+  });
   const copy = bookingCopy[language];
   const ui = uiText[language];
 
   const selectedServiceInfo = useMemo(() => services.find((service) => service.title === form.service), [form.service]);
   const selectedPrice = useMemo(() => getServicePriceText(form.service, language).replace("kr", "SEK"), [form.service, language]);
   const selectedServiceDisplay = useMemo(() => getServiceDisplayTitle(form.service, language), [form.service, language]);
+  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
 
   useEffect(() => {
     if (bookingOpen) {
       const defaultService = services.some((service) => service.title === selectedService) ? selectedService : "Stor rekond";
+      const nextBookableDate = getNextBookableDate();
+      const selectedDate = dateFromIso(nextBookableDate);
 
       setForm((current) => ({
         ...current,
         service: defaultService || current.service || services[0]?.title || "",
         vehicle: current.vehicle || "Personbil",
+        date: nextBookableDate,
         humanConfirmed: false
       }));
+      setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
       setStep("select");
       setSent(false);
       setErrorMessage("");
@@ -247,6 +342,7 @@ export function BookingModal() {
       "",
       `${copy.service}: ${selectedServiceDisplay}`,
       `${copy.price}: ${selectedPrice}`,
+      `${copy.date.replace(" *", "")}: ${formatLongDate(form.date, language)}`,
       "",
       `${copy.name.replace(" *", "")}: ${form.name}`,
       `${copy.phone.replace(" *", "")}: ${form.phone}`,
@@ -263,8 +359,18 @@ export function BookingModal() {
   };
 
   const continueToDetails = () => {
-    if (!form.service) {
+    if (!form.service || !form.date) {
       setErrorMessage(copy.missingSelection);
+      return;
+    }
+
+    if (isSunday(form.date)) {
+      setErrorMessage(copy.invalidSunday);
+      return;
+    }
+
+    if (isBeforeToday(form.date)) {
+      setErrorMessage(copy.invalidDate);
       return;
     }
 
@@ -293,6 +399,14 @@ export function BookingModal() {
 
     if (!form.vehicle.trim()) {
       errors.vehicle = copy.requiredVehicle;
+    }
+
+    if (!form.date) {
+      errors.date = copy.requiredDate;
+    } else if (isSunday(form.date)) {
+      errors.date = copy.invalidSunday;
+    } else if (isBeforeToday(form.date)) {
+      errors.date = copy.invalidDate;
     }
 
     if (!form.registration.trim()) {
@@ -343,6 +457,7 @@ export function BookingModal() {
         customer_email: form.email.trim(),
         customer_phone: form.phone.trim(),
         service: selectedServiceDisplay,
+        booking_date: form.date,
         vehicle_type: form.vehicle.trim() || null,
         reg_number: regNumber,
         price_text: selectedPrice,
@@ -369,6 +484,7 @@ export function BookingModal() {
       const { data: emailData, error: emailError } = await sendBookingEmail({
         booking_id: bookingId,
         created_at: bookingCreatedAt,
+        booking_date: form.date,
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -426,6 +542,7 @@ export function BookingModal() {
             {sent ? (
               <SuccessState
                 service={selectedServiceDisplay}
+                date={form.date}
                 language={language}
                 onClose={closeBooking}
                 mailto={buildMailto()}
@@ -509,6 +626,74 @@ export function BookingModal() {
                     })}
                   </div>
 
+                  <div className="rounded-3xl border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/[0.055]">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black">{copy.date}</p>
+                        <p className="mt-1 text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                          {form.date ? `${copy.selectedDate}: ${formatLongDate(form.date, language)}` : copy.requiredDate}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="icon-button h-9 w-9"
+                          type="button"
+                          aria-label={copy.previousMonth}
+                          onClick={() =>
+                            setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))
+                          }
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          className="icon-button h-9 w-9"
+                          type="button"
+                          aria-label={copy.nextMonth}
+                          onClick={() =>
+                            setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))
+                          }
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-3 text-center text-sm font-black capitalize">{formatMonth(visibleMonth, language)}</div>
+                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-black uppercase text-zinc-500 dark:text-zinc-400">
+                      {weekDays[language].map((day) => (
+                        <span key={day}>{day}</span>
+                      ))}
+                    </div>
+                    <div className="mt-2 grid grid-cols-7 gap-1">
+                      {calendarDays.map((day) => {
+                        const disabled = isBeforeToday(day.isoDate) || isSunday(day.isoDate);
+                        const active = form.date === day.isoDate;
+
+                        return (
+                          <button
+                            key={day.isoDate}
+                            type="button"
+                            disabled={disabled}
+                            className={`aspect-square rounded-xl border text-sm font-black transition ${
+                              active
+                                ? "border-vikingRed bg-vikingRed text-white shadow-glow"
+                                : day.inMonth
+                                  ? "border-black/10 bg-white text-ink hover:border-vikingRed/40 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                                  : "border-transparent bg-transparent text-zinc-300 dark:text-zinc-600"
+                            } disabled:cursor-not-allowed disabled:border-transparent disabled:bg-zinc-100 disabled:text-zinc-300 disabled:line-through dark:disabled:bg-white/[0.035] dark:disabled:text-zinc-600`}
+                            onClick={() => update("date", day.isoDate)}
+                          >
+                            {day.dayNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-3 flex items-center gap-2 text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                      <AlertCircle size={14} className="text-vikingRed" /> {copy.noSunday}
+                    </p>
+                    {validationErrors.date ? <FieldError message={validationErrors.date} /> : null}
+                  </div>
+
                   <button className="primary-button w-full justify-center py-4" type="button" onClick={continueToDetails}>
                     {copy.continue} <Sparkles size={18} />
                   </button>
@@ -577,6 +762,9 @@ export function BookingModal() {
                     </p>
                     <p>
                       <span className="font-black">{copy.price}:</span> <span className="font-black text-[#ff8a00]">{selectedPrice}</span>
+                    </p>
+                    <p>
+                      <span className="font-black">{copy.date.replace(" *", "")}:</span> {formatLongDate(form.date, language)}
                     </p>
                   </div>
 
@@ -678,18 +866,21 @@ function FieldError({ message }: { message: string }) {
 
 function SuccessState({
   service,
+  date,
   language,
   onClose,
   mailto,
   emailWarning
 }: {
   service: string;
+  date: string;
   language: Language;
   onClose: () => void;
   mailto: string;
   emailWarning: string;
 }) {
   const copy = bookingCopy[language];
+  const dateText = date ? `${copy.onDate} ${formatLongDate(date, language)}` : "";
 
   return (
     <div className="p-8 text-center md:p-12">
@@ -699,7 +890,7 @@ function SuccessState({
       </div>
       <h2 className="mt-6 text-3xl font-black">{copy.successTitle}</h2>
       <p className="mx-auto mt-4 max-w-md leading-7 text-zinc-600 dark:text-zinc-300">
-        {copy.successText.replace("{service}", service)}
+        {copy.successText.replace("{service}", service).replace("{date}", dateText)}
       </p>
       {emailWarning ? (
         <p className="mx-auto mt-5 max-w-md rounded-2xl border border-[#ff8a00]/35 bg-[#fff3df] p-4 text-sm font-bold leading-6 text-[#9a5300] dark:bg-[#ff8a00]/10 dark:text-[#ffd7a3]">

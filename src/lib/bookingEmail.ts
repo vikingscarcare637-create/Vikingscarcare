@@ -4,6 +4,7 @@ import { supabase } from "./supabase";
 export type BookingEmailPayload = {
   booking_id: string;
   created_at: string;
+  booking_date: string;
   name: string;
   phone: string;
   email: string;

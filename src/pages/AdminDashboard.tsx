@@ -30,6 +30,7 @@ type Booking = {
   customer_email: string | null;
   customer_phone: string;
   service: string;
+  booking_date: string | null;
   vehicle_type: string | null;
   reg_number: string | null;
   price_text: string | null;
@@ -130,7 +131,7 @@ export function AdminDashboard() {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, created_at, updated_at, customer_name, customer_email, customer_phone, service, vehicle_type, reg_number, price_text, message, status"
+        "id, created_at, updated_at, customer_name, customer_email, customer_phone, service, booking_date, vehicle_type, reg_number, price_text, message, status"
       )
       .order("created_at", { ascending: false });
 
@@ -268,6 +269,7 @@ export function AdminDashboard() {
           booking.email,
           booking.vehicle_type,
           booking.reg_number ?? "",
+          booking.booking_date ?? "",
           booking.selected_service,
           booking.price_text ?? "",
           booking.message ?? ""
@@ -314,6 +316,7 @@ export function AdminDashboard() {
       "Fordon",
       "Reg.nr",
       "Tjänst",
+      "Bokningsdatum",
       "Pris",
       "Meddelande",
       "Boknings-ID"
@@ -327,6 +330,7 @@ export function AdminDashboard() {
       booking.vehicle_type,
       booking.reg_number ?? "",
       booking.selected_service,
+      booking.booking_date ?? "",
       booking.price_text ?? "",
       booking.message ?? "",
       booking.id
@@ -483,7 +487,7 @@ export function AdminDashboard() {
                       <tr>
                         <th className="px-5 py-4">Kund</th>
                         <th className="px-5 py-4">Tjänst</th>
-                        <th className="px-5 py-4">Skapad</th>
+                        <th className="px-5 py-4">Datum</th>
                         <th className="px-5 py-4">Fordon</th>
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4">Meddelande</th>
@@ -510,8 +514,8 @@ export function AdminDashboard() {
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">ID {booking.id.slice(0, 8)}</p>
                           </td>
                           <td className="px-5 py-5">
-                            <p className="font-black">{formatDate(booking.created_at)}</p>
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{formatDateTime(booking.created_at)}</p>
+                            <p className="font-black">{formatDate(booking.booking_date)}</p>
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Skapad {formatDateTime(booking.created_at)}</p>
                           </td>
                           <td className="px-5 py-5">
                             <p>{booking.vehicle_type}</p>
@@ -563,7 +567,9 @@ export function AdminDashboard() {
                       {bookings.slice(0, 5).map((booking) => (
                         <div key={booking.id} className="rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.06]">
                           <p className="font-black">{booking.name}</p>
-                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{formatDateTime(booking.created_at)}</p>
+                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                            {formatDate(booking.booking_date)} · skapad {formatDateTime(booking.created_at)}
+                          </p>
                           <p className="mt-1 text-xs font-bold uppercase text-vikingRed">{booking.selected_service}</p>
                         </div>
                       ))}
